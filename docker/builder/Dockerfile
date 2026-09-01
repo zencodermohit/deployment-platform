@@ -10,8 +10,12 @@
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
+# Every workspace manifest, because `npm ci` validates the lockfile against all
+# of them. Only the builder's dependencies end up in the final image, since the
+# runtime stage copies a single bundled file and no node_modules.
 COPY packages/core/package.json packages/core/
 COPY apps/builder/package.json apps/builder/
+COPY apps/api/package.json apps/api/
 RUN npm ci --no-audit --no-fund
 
 # ---------- build: typecheck, then bundle ----------
@@ -21,7 +25,11 @@ COPY tsconfig.json ./
 COPY packages ./packages
 COPY apps ./apps
 # tsc checks types; esbuild emits. Different jobs, both run.
-RUN npx tsc --noEmit -p tsconfig.json
+#
+# Scoped to the builder's own tsconfig, not the root one: the root config covers
+# apps/api too, and typechecking code this image neither contains nor needs is
+# how a change to the API breaks the build-container image.
+RUN npx tsc --noEmit -p apps/builder/tsconfig.json
 RUN node apps/builder/build.mjs
 
 # ---------- runtime ----------

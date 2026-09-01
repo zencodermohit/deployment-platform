@@ -20,7 +20,9 @@
     "builder": "node apps/builder/dist/builder.mjs",
     "doctor": "node apps/builder/dist/builder.mjs doctor",
     "docker:build": "docker build -f docker/builder/Dockerfile -t deploy-builder:dev .",
-    "docker:doctor": "docker run --rm deploy-builder:dev doctor"
+    "docker:doctor": "docker run --rm deploy-builder:dev doctor",
+    "test:aws": "vitest run --config vitest.aws.config.ts",
+    "docker:run": "bash scripts/run-build.sh"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

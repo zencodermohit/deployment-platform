@@ -9,7 +9,8 @@
  * the machine-readable result. See docs/04-build-contract.md.
  */
 
-import { rm } from 'node:fs/promises';
+import { mkdir, readdir, rm } from 'node:fs/promises';
+import path from 'node:path';
 import {
   BuildError,
   describeConfig,
@@ -100,7 +101,7 @@ async function runPipeline(sourceArg: string | undefined): Promise<number> {
     log.info('builder starting', describeConfig(cfg));
 
     // A stale work directory would let one build see another's files.
-    await rm(cfg.workDir, { recursive: true, force: true });
+    await emptyDir(cfg.workDir);
 
     const { archivePath } = await fetchSource(cfg, log.phase('fetch'));
     const { rootDir } = await extractSource(archivePath, cfg, log.phase('fetch'));
@@ -135,6 +136,23 @@ async function runPipeline(sourceArg: string | undefined): Promise<number> {
     });
     return err.exitCode;
   }
+}
+
+/**
+ * Empty a directory without removing the directory itself.
+ *
+ * `rm(dir, { recursive: true })` would delete the directory too, and deleting a
+ * directory needs write permission on its PARENT. In the container /workspace
+ * sits directly under /, which root owns, so the unprivileged build user gets
+ * EACCES. Locally the work directory sat inside a folder we owned, so this only
+ * appeared once the container actually ran.
+ */
+async function emptyDir(dir: string): Promise<void> {
+  await mkdir(dir, { recursive: true });
+  const entries = await readdir(dir);
+  await Promise.all(
+    entries.map((entry) => rm(path.join(dir, entry), { recursive: true, force: true })),
+  );
 }
 
 /**

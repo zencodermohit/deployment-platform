@@ -10,6 +10,13 @@
 
 set -euo pipefail
 
+# Git Bash on Windows rewrites Unix-looking arguments into Windows paths when it
+# calls a native binary, so `-v /in:...` and `build /in/x.tar.gz` reach docker as
+# `C:/Program Files/Git/in/...`. This disables that rewriting for the whole
+# script. Harmless on Linux and macOS, where the variable is simply ignored.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 arg="${1:-static-ok}"
 image="${IMAGE:-deploy-builder:dev}"

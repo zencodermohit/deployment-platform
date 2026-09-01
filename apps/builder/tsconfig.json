@@ -1,0 +1,10 @@
+{
+  // Scoped typecheck for the build container.
+  //
+  // The root tsconfig covers the whole monorepo, including apps/api and its AWS
+  // SDK imports. The builder image installs none of that and must not: every
+  // dependency in the image that runs untrusted code is surface area. So the
+  // image typechecks this config, which sees only the builder and core.
+  "extends": "../../tsconfig.json",
+  "include": ["src/**/*.ts", "../../packages/core/src/**/*.ts"]
+}
