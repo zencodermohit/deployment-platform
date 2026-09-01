@@ -11,7 +11,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { DeleteCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { handler } from '../../apps/api/src/main.js';
-import { documentClient, tableName } from '../../apps/api/src/repository/table.js';
+import { documentClient, tableName } from '@platform/data';
 
 const USER_A = 'usr_alice';
 const USER_B = 'usr_bob';

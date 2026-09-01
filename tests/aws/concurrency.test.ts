@@ -27,8 +27,8 @@ import {
   getDeploymentById,
   listDeployments,
   transition,
-} from '../../apps/api/src/repository/deployments.js';
-import { documentClient, tableName } from '../../apps/api/src/repository/table.js';
+} from '@platform/data';
+import { documentClient, tableName } from '@platform/data';
 
 const createdKeys: { PK: string; SK: string }[] = [];
 

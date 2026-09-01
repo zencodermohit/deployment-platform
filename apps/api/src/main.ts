@@ -11,7 +11,7 @@
 import { RepositoryUrlError } from './validation/schemas.js';
 import { badRequest, conflict, notFound } from './http/errors.js';
 import { errorResponse, json, toHttpRequest, type HttpRequest, type HttpResponse } from './http/response.js';
-import { isConditionalCheckFailure } from './repository/table.js';
+import { isConditionalCheckFailure } from '@platform/data';
 import {
   handleCreateProject,
   handleGetProject,
@@ -22,6 +22,7 @@ import {
   handleGetDeployment,
   handleListDeployments,
 } from './handlers/deployments.js';
+import { handleStatusCallback } from './handlers/status.js';
 
 type Handler = (req: HttpRequest) => Promise<HttpResponse>;
 
@@ -43,6 +44,14 @@ const ROUTES: Route[] = [
   { method: 'GET', template: '/projects/{projectId}/deployments', handler: handleListDeployments },
 
   { method: 'GET', template: '/deployments/{deploymentId}', handler: handleGetDeployment },
+
+  // Called by the build container, authenticated with a per-deployment token
+  // rather than a session. Not part of the public surface.
+  {
+    method: 'POST',
+    template: '/internal/deployments/{deploymentId}/status',
+    handler: handleStatusCallback,
+  },
 ];
 
 /** Match a concrete path against a template, extracting parameters. */

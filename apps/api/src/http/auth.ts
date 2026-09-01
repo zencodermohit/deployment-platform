@@ -9,7 +9,7 @@
  * When sessions land, only `identify()` changes.
  */
 
-import { getProjectForUser } from '../repository/projects.js';
+import { getProjectForUser } from '@platform/data';
 import { notFound, unauthenticated } from './errors.js';
 import type { HttpRequest } from './response.js';
 import type { Project } from '@platform/core';

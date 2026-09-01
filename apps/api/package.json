@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.716.0",
-    "@aws-sdk/lib-dynamodb": "^3.716.0",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "@aws-sdk/client-cloudfront-keyvaluestore": "^3.716.0"
   }
 }

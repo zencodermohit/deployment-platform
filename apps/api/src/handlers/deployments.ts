@@ -7,7 +7,7 @@ import {
 import { authorizeProject, identify } from '../http/auth.js';
 import { notFound } from '../http/errors.js';
 import { json, parseBody, type HttpRequest, type HttpResponse } from '../http/response.js';
-import { createDeployment, getDeploymentById, listDeployments } from '../repository/deployments.js';
+import { createDeployment, getDeploymentById, listDeployments } from '@platform/data';
 import { createDeploymentSchema, listQuerySchema } from '../validation/schemas.js';
 
 const BUILD_TIMEOUT_SEC = Number(process.env['BUILD_TIMEOUT_SEC'] ?? 600);

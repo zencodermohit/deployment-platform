@@ -32,6 +32,7 @@ const result = await build({
   },
   alias: {
     '@platform/core': resolve(root, 'packages/core/src/index.ts'),
+    '@platform/data': resolve(root, 'packages/data/src/index.ts'),
   },
   logLevel: 'info',
   metafile: true,

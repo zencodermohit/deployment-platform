@@ -59,7 +59,7 @@ export const TRANSITIONS: readonly Transition[] = [
     (from): Transition => ({
       from,
       to: 'FAILED',
-      by: ['container', 'reconciler', 'sweeper', 'api'],
+      by: ['container', 'reconciler', 'sweeper', 'api', 'dispatcher'],
       note: 'Failure, reported or detected.',
     }),
   ),

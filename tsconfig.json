@@ -22,7 +22,9 @@
     "baseUrl": ".",
     "paths": {
       "@platform/core": ["packages/core/src/index.ts"],
-      "@platform/core/*": ["packages/core/src/*"]
+      "@platform/core/*": ["packages/core/src/*"],
+      "@platform/data": ["packages/data/src/index.ts"],
+      "@platform/data/*": ["packages/data/src/*"]
     }
   },
   "include": [

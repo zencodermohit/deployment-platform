@@ -217,6 +217,62 @@ export async function transition(input: TransitionInput): Promise<TransitionResu
 }
 
 /**
+ * Update attributes WITHOUT changing status.
+ *
+ * Distinct from `transition` on purpose. Recording a task ARN on a deployment
+ * that is already PROVISIONING is not a state change, and routing it through
+ * `transition` would ask for PROVISIONING -> PROVISIONING — which the state
+ * machine correctly refuses, since a self-transition is never legal.
+ *
+ * Still guarded: the optional status list keeps a late patch from resurrecting
+ * a deployment that has already finished or failed.
+ */
+export async function patchDeployment(
+  deployment: Pick<Deployment, 'projectId' | 'createdAt' | 'deploymentId'>,
+  patch: Partial<Deployment>,
+  expectStatus?: DeploymentStatus[],
+): Promise<boolean> {
+  const names: Record<string, string> = {};
+  const values: Record<string, unknown> = {};
+  const sets: string[] = [];
+
+  for (const [key, value] of Object.entries(patch)) {
+    if (RESERVED.has(key) || key === 'status' || value === undefined) continue;
+    names[`#${key}`] = key;
+    values[`:${key}`] = value;
+    sets.push(`#${key} = :${key}`);
+  }
+  if (sets.length === 0) return true;
+
+  let condition = 'attribute_exists(PK)';
+  if (expectStatus && expectStatus.length > 0) {
+    names['#status'] = 'status';
+    const placeholders = expectStatus.map((status, i) => {
+      values[`:expect${i}`] = status;
+      return `:expect${i}`;
+    });
+    condition = `#status IN (${placeholders.join(', ')})`;
+  }
+
+  try {
+    await documentClient().send(
+      new UpdateCommand({
+        TableName: tableName(),
+        Key: deploymentKey(deployment.projectId, deployment.createdAt, deployment.deploymentId),
+        UpdateExpression: `SET ${sets.join(', ')}`,
+        ConditionExpression: condition,
+        ExpressionAttributeNames: names,
+        ExpressionAttributeValues: values,
+      }),
+    );
+    return true;
+  } catch (e) {
+    if (isConditionalCheckFailure(e)) return false;
+    throw e;
+  }
+}
+
+/**
  * The claim: QUEUED -> PROVISIONING.
  *
  * Exactly one dispatcher can win this, which is what makes the pipeline

@@ -5,9 +5,9 @@ import {
 import { authorizeProject, identify } from '../http/auth.js';
 import { conflict, notFound, quotaExceeded } from '../http/errors.js';
 import { json, parseBody, type HttpRequest, type HttpResponse } from '../http/response.js';
-import { countProjects, createProject, listProjects } from '../repository/projects.js';
+import { countProjects, createProject, listProjects } from '@platform/data';
 import { createProjectSchema, parseRepositoryUrl } from '../validation/schemas.js';
-import { isConditionalCheckFailure } from '../repository/table.js';
+import { isConditionalCheckFailure } from '@platform/data';
 
 const MAX_PROJECTS_PER_USER = 10;
 

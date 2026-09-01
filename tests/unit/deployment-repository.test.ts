@@ -21,8 +21,8 @@ import {
   findOverdueDeployments,
   listDeployments,
   transition,
-} from '../../apps/api/src/repository/deployments.js';
-import { resetClient } from '../../apps/api/src/repository/table.js';
+} from '@platform/data';
+import { resetClient } from '@platform/data';
 import { SCHEMA_VERSION, type Deployment } from '@platform/core';
 
 const ddb = mockClient(DynamoDBDocumentClient);
