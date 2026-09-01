@@ -16,13 +16,14 @@
     "test:watch": "vitest",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "fixtures": "node scripts/make-fixtures.mjs",
-    "build": "node apps/builder/build.mjs",
+    "build": "node apps/builder/build.mjs && node apps/api/build.mjs",
     "builder": "node apps/builder/dist/builder.mjs",
     "doctor": "node apps/builder/dist/builder.mjs doctor",
     "docker:build": "docker build -f docker/builder/Dockerfile -t deploy-builder:dev .",
     "docker:doctor": "docker run --rm deploy-builder:dev doctor",
     "test:aws": "vitest run --config vitest.aws.config.ts",
-    "docker:run": "bash scripts/run-build.sh"
+    "docker:run": "bash scripts/run-build.sh",
+    "build:api": "node apps/api/build.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

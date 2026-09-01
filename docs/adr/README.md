@@ -11,6 +11,7 @@
 | [0007](0007-public-subnet-no-nat.md) | Public subnet, no NAT Gateway | Accepted |
 | [0008](0008-dynamodb-single-table.md) | Single-table DynamoDB with a sparse in-flight index | Accepted |
 | [0009](0009-container-reports-via-scoped-api.md) | Container reports status via scoped API, not DynamoDB | Accepted |
+| [0010](0010-single-lambda-with-internal-routing.md) | One Lambda for the API, routing internally | Accepted |
 
 ## Template
 
