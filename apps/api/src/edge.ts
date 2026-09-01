@@ -15,6 +15,19 @@ import {
   DescribeKeyValueStoreCommand,
   PutKeyCommand,
 } from '@aws-sdk/client-cloudfront-keyvaluestore';
+import { signatureV4CrtContainer } from '@aws-sdk/signature-v4-multi-region';
+import { SignatureV4a } from '@aws-sdk/signature-v4a';
+
+/**
+ * The key-value store API signs with SigV4a (multi-region), which the SDK does
+ * NOT bundle by default — it throws "Neither CRT nor JS SigV4a implementation
+ * is available" at the first call. The pure-JS implementation has to be
+ * installed and registered explicitly, which is easy to miss because every
+ * other AWS client works without it.
+ */
+// The slot is named for the CRT signer, but it accepts the pure-JS SigV4a
+// implementation — which avoids a native dependency in the Lambda bundle.
+signatureV4CrtContainer.CrtSignerV4 = SignatureV4a as never;
 
 let client: CloudFrontKeyValueStoreClient | undefined;
 

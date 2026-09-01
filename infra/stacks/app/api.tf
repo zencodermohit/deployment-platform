@@ -26,7 +26,18 @@ data "terraform_remote_state" "edge" {
 locals {
   api_source     = "${path.module}/../../../apps/api/dist"
   cloudfront_dns = data.terraform_remote_state.edge.outputs.distribution_domain_name
+  kvs_arn        = data.terraform_remote_state.edge.outputs.key_value_store_arn
+
+  # Derived by convention rather than read from the build stack's state.
+  # The build stack already reads THIS stack's outputs (for the table and the
+  # API URL), so reading its outputs back here would be a dependency cycle.
+  # The queue name is deterministic, so the ARN and URL are too.
+  queue_name = "${var.project}-builds"
+  queue_arn  = "arn:aws:sqs:${var.region}:${data.aws_caller_identity.current.account_id}:${local.queue_name}"
+  queue_url  = "https://sqs.${var.region}.amazonaws.com/${data.aws_caller_identity.current.account_id}/${local.queue_name}"
 }
+
+data "aws_caller_identity" "current" {}
 
 # ---------------------------------------------------------------------------
 # Packaging
@@ -87,6 +98,23 @@ data "aws_iam_policy_document" "api" {
   }
 
   statement {
+    sid       = "EnqueueBuilds"
+    effect    = "Allow"
+    actions   = ["sqs:SendMessage"]
+    resources = [local.queue_arn]
+  }
+
+  # Writing the edge routing table is a CONTROL-PLANE action. The build
+  # container holds no CloudFront permissions at all — if it could write here it
+  # could point any hostname at any prefix, which is the tenancy boundary.
+  statement {
+    sid       = "WriteEdgeRoutes"
+    effect    = "Allow"
+    actions   = ["cloudfront-keyvaluestore:DescribeKeyValueStore", "cloudfront-keyvaluestore:PutKey"]
+    resources = [local.kvs_arn]
+  }
+
+  statement {
     sid       = "Logs"
     effect    = "Allow"
     actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
@@ -134,6 +162,8 @@ resource "aws_lambda_function" "api" {
       CLOUDFRONT_DOMAIN = local.cloudfront_dns
       DEPLOYMENT_DOMAIN = var.deployment_domain
       BUILD_TIMEOUT_SEC = tostring(var.build_timeout_sec)
+      QUEUE_URL         = local.queue_url
+      KVS_ARN           = local.kvs_arn
       NODE_OPTIONS      = "--enable-source-maps=false"
     }
   }

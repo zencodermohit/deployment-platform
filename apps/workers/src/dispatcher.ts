@@ -112,6 +112,10 @@ async function dispatchOne(record: SqsRecord): Promise<void> {
           containerOverrides: [
             {
               name: 'builder',
+              // Explicit, not inherited. Without this the image's CMD is used
+              // as the argument — which is how the first real dispatch ran
+              // `builder help`, printed usage, and exited 0.
+              command: ['build'],
               environment: [
                 { name: 'BUILDER_MODE', value: 'aws' },
                 { name: 'DEPLOYMENT_ID', value: deploymentId },
@@ -125,13 +129,10 @@ async function dispatchOne(record: SqsRecord): Promise<void> {
             },
           ],
         },
-        // Lets the reconciler tie an ECS event back to a deployment without a
-        // lookup table.
-        tags: [
-          { key: 'deploymentId', value: deploymentId },
-          { key: 'projectId', value: deployment.projectId },
-        ],
-        propagateTags: 'TASK_DEFINITION',
+        // Deliberately NO tags. Tagging a task requires ecs:TagResource, and
+        // the tags would buy nothing: the reconciler reads DEPLOYMENT_ID out of
+        // the environment overrides above, which ECS echoes back in its
+        // state-change event. Fewer permissions for the same capability.
       }),
     );
 

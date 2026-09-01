@@ -8,6 +8,7 @@ import { authorizeProject, identify } from '../http/auth.js';
 import { notFound } from '../http/errors.js';
 import { json, parseBody, type HttpRequest, type HttpResponse } from '../http/response.js';
 import { createDeployment, getDeploymentById, listDeployments } from '@platform/data';
+import { enqueueDeployment } from '../queue.js';
 import { createDeploymentSchema, listQuerySchema } from '../validation/schemas.js';
 
 const BUILD_TIMEOUT_SEC = Number(process.env['BUILD_TIMEOUT_SEC'] ?? 600);
@@ -97,6 +98,14 @@ export async function handleCreateDeployment(req: HttpRequest): Promise<HttpResp
       retryOfDeploymentId: null,
     },
   });
+
+  // Enqueue AFTER the record exists. The message carries only an id, so a
+  // dispatcher that picks it up instantly still finds a row to claim. Doing it
+  // the other way round produces a message pointing at nothing.
+  //
+  // If this throws, the deployment stays QUEUED with nothing to process it —
+  // the sweeper fails it at its deadline rather than leaving it forever.
+  await enqueueDeployment(deployment.deploymentId);
 
   // 202, not 201: the deployment record exists, but the work has not happened.
   // The API must not wait for a build that takes minutes.

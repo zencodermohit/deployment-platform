@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "zod": "^3.24.1",
-    "@aws-sdk/client-cloudfront-keyvaluestore": "^3.716.0"
+    "@aws-sdk/client-cloudfront-keyvaluestore": "^3.716.0",
+    "@aws-sdk/client-sqs": "^3.716.0",
+    "@aws-sdk/signature-v4-multi-region": "^3.996.46",
+    "@aws-sdk/signature-v4a": "^3.1111.0",
+    "zod": "^3.24.1"
   }
 }

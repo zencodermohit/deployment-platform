@@ -292,15 +292,25 @@ export function claimDeployment(
 }
 
 export function failDeployment(
-  deployment: Pick<Deployment, 'projectId' | 'createdAt' | 'deploymentId' | 'deadlineAt'>,
+  deployment: Pick<
+    Deployment,
+    'projectId' | 'createdAt' | 'deploymentId' | 'deadlineAt'
+  >,
   by: Actor,
   error: DeploymentError,
 ): Promise<TransitionResult> {
+  const now = new Date();
   return transition({
     deployment,
     to: 'FAILED',
     by,
-    patch: { error, finishedAt: new Date().toISOString() },
+    patch: {
+      error,
+      finishedAt: now.toISOString(),
+      // Set here too, not only on the success path, so a failed deployment
+      // still shows how long it ran before giving up.
+      durationMs: now.getTime() - new Date(deployment.createdAt).getTime(),
+    },
   });
 }
 

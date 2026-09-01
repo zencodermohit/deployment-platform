@@ -63,4 +63,8 @@ USER node
 RUN node /app/builder.mjs doctor
 
 ENTRYPOINT ["node", "/app/builder.mjs"]
-CMD ["help"]
+# Building is what this image is for, so that is the default. `help` and
+# `doctor` are still available by passing them explicitly. A CMD of "help" read
+# nicely but meant a caller who forgot to set the command got a successful exit
+# and no build — a silent no-op, which is the worst kind of default.
+CMD ["build"]
