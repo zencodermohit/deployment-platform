@@ -49,6 +49,6 @@ export function isConditionalCheckFailure(e: unknown): boolean {
     typeof e === 'object' &&
     e !== null &&
     'name' in e &&
-    (e as { name: unknown }).name === 'ConditionalCheckFailedException'
+    (e).name === 'ConditionalCheckFailedException'
   );
 }

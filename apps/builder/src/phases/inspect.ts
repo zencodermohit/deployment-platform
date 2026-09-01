@@ -66,7 +66,7 @@ async function readPackageJson(rootDir: string, log: Logger): Promise<PackageJso
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       throw new Error('not an object');
     }
-    return parsed as PackageJson;
+    return parsed;
   } catch (e) {
     throw new BuildError(
       'UNSUPPORTED_FRAMEWORK',

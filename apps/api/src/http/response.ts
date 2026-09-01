@@ -56,7 +56,9 @@ export function errorResponse(e: unknown, requestId: string): HttpResponse {
 /** Parse and validate a JSON body. An absent body is treated as `{}`. */
 export function parseBody<T extends ZodTypeAny>(req: HttpRequest, schema: T): z.infer<T> {
   const raw = req.rawBody?.trim();
-  if (!raw) return schema.parse({});
+  // The casts exist because Zod's `parse` is typed as `any` through a generic;
+  // the runtime value genuinely is `z.infer<T>`.
+  if (!raw) return schema.parse({}) as z.infer<T>;
 
   if (raw.length > 64 * 1024) {
     throw badRequest('request body is too large');
@@ -69,16 +71,33 @@ export function parseBody<T extends ZodTypeAny>(req: HttpRequest, schema: T): z.
     throw badRequest('request body is not valid JSON');
   }
 
-  return schema.parse(parsed);
+  return schema.parse(parsed) as z.infer<T>;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+}
+
+/**
+ * First string-ish value, or the fallback.
+ *
+ * `String(a ?? b)` would happily stringify an object into "[object Object]" and
+ * route on it — the event is attacker-reachable, so a non-string here should
+ * fall back rather than become a nonsense method or path.
+ */
+function asString(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
 }
 
 /** Normalise an API Gateway v2 event into something testable without AWS types. */
-export function toHttpRequest(event: Record<string, any>): HttpRequest {
-  const ctx = event['requestContext'] ?? {};
-  const http = ctx['http'] ?? {};
+export function toHttpRequest(event: Record<string, unknown>): HttpRequest {
+  // API Gateway's event is genuinely untyped at the edge of the system, so it
+  // is narrowed here once rather than trusted throughout.
+  const ctx = asRecord(event['requestContext']);
+  const http = asRecord(ctx['http']);
 
   const headers: Record<string, string> = {};
-  for (const [key, value] of Object.entries(event['headers'] ?? {})) {
+  for (const [key, value] of Object.entries(asRecord(event['headers']))) {
     if (typeof value === 'string') headers[key.toLowerCase()] = value;
   }
 
@@ -88,12 +107,12 @@ export function toHttpRequest(event: Record<string, any>): HttpRequest {
   }
 
   return {
-    method: String(http['method'] ?? event['httpMethod'] ?? 'GET').toUpperCase(),
-    path: String(http['path'] ?? event['rawPath'] ?? '/'),
+    method: asString(http['method'] ?? event['httpMethod'], 'GET').toUpperCase(),
+    path: asString(http['path'] ?? event['rawPath'], '/'),
     pathParameters: (event['pathParameters'] ?? {}) as Record<string, string>,
     query: (event['queryStringParameters'] ?? {}) as Record<string, string>,
     headers,
     rawBody,
-    requestId: String(ctx['requestId'] ?? 'local'),
+    requestId: asString(ctx['requestId'], 'local'),
   };
 }

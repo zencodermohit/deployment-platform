@@ -189,7 +189,7 @@ describe('createDeploymentSchema', () => {
     const result = createDeploymentSchema.parse({
       branch: 'main',
       repositoryUrl: 'https://github.com/attacker/evil',
-    } as never);
+    });
     expect(result).not.toHaveProperty('repositoryUrl');
   });
 });

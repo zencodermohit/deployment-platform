@@ -47,11 +47,12 @@ beforeAll(async () => {
   store = new Map();
   (globalThis as Record<string, unknown>)['__cfStub'] = {
     kvs: () => ({
-      get: async (key: string): Promise<string> => {
+      get: (key: string): Promise<string> => {
         const value = store.get(key);
-        // CloudFront's KVS throws on a missing key rather than returning null.
-        if (value === undefined) throw new Error(`key not found: ${key}`);
-        return value;
+        // CloudFront's KVS rejects on a missing key rather than resolving null.
+        return value === undefined
+          ? Promise.reject(new Error(`key not found: ${key}`))
+          : Promise.resolve(value);
       },
     }),
   };

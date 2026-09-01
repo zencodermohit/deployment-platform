@@ -18,7 +18,13 @@ const USER_B = 'usr_bob';
 
 interface Response {
   status: number;
-  body: Record<string, any>;
+  /**
+   * Deliberately `any`. These tests assert on arbitrary JSON shapes from a dozen
+   * endpoints; typing each one would duplicate the handlers' own types and make
+   * the tests agree with the code by construction rather than by checking it.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  body: any;
 }
 
 async function call(

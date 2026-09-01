@@ -17,7 +17,7 @@ import {
   findOverdueDeployments,
   getDeploymentConsistent,
 } from '@platform/data';
-import { isTerminal } from '@platform/core';
+import { emitMetrics, isTerminal, METRICS } from '@platform/core';
 import { log } from './shared.js';
 
 export async function handler(): Promise<{ examined: number; failed: number }> {
@@ -25,6 +25,7 @@ export async function handler(): Promise<{ examined: number; failed: number }> {
 
   if (overdue.length === 0) {
     log('debug', 'nothing overdue');
+    emitMetrics({ metrics: [{ name: METRICS.sweptDeployments, value: 0, unit: 'Count' }] });
     return { examined: 0, failed: 0 };
   }
 
@@ -69,6 +70,13 @@ export async function handler(): Promise<{ examined: number; failed: number }> {
       });
     }
   }
+
+  // A non-zero value here means builds are dying without reporting, which is
+  // the failure mode the sweeper exists to catch and worth alarming on.
+  emitMetrics({
+    metrics: [{ name: METRICS.sweptDeployments, value: failed, unit: 'Count' }],
+    properties: { msg: 'sweep complete', examined: overdue.length },
+  });
 
   return { examined: overdue.length, failed };
 }

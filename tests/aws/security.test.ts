@@ -18,11 +18,7 @@
  */
 
 import { beforeAll, describe, expect, it } from 'vitest';
-import {
-  IAMClient,
-  SimulatePrincipalPolicyCommand,
-  type EvaluationResult,
-} from '@aws-sdk/client-iam';
+import { IAMClient, SimulatePrincipalPolicyCommand } from '@aws-sdk/client-iam';
 import { DescribeTaskDefinitionCommand, ECSClient } from '@aws-sdk/client-ecs';
 import { CloudFrontClient, ListKeyValueStoresCommand } from '@aws-sdk/client-cloudfront';
 
@@ -89,7 +85,7 @@ async function decide(
         : {}),
     }),
   );
-  const evaluation = result.EvaluationResults?.[0] as EvaluationResult | undefined;
+  const evaluation = result.EvaluationResults?.[0];
   return evaluation?.EvalDecision === 'allowed' ? 'allowed' : 'denied';
 }
 

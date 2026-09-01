@@ -40,7 +40,7 @@ interface Route {
 }
 
 const ROUTES: Route[] = [
-  { method: 'GET', template: '/health', handler: async () => json(200, { ok: true }) },
+  { method: 'GET', template: '/health', handler: () => Promise.resolve(json(200, { ok: true })) },
 
   { method: 'GET', template: '/auth/github', handler: handleLoginStart },
   { method: 'GET', template: '/auth/github/callback', handler: handleLoginCallback },

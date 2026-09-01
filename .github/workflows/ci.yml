@@ -1,0 +1,170 @@
+name: CI
+
+# Every push and every pull request. The AWS steps are read-only: plan, never
+# apply. Applying happens in deploy.yml, behind an environment gate.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: lint, types, tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Unit and integration only. The suites that touch real AWS need
+      # credentials and cost money, so they run in aws-checks below, which is
+      # skipped on forks.
+      - name: Test
+        run: npm test
+
+      - name: Build every bundle
+        run: npm run build
+
+      # A bundle that grows unexpectedly usually means a dependency was pulled
+      # into the container that runs untrusted code. Worth seeing in the log.
+      - name: Bundle sizes
+        run: |
+          ls -lh apps/builder/dist/builder.mjs apps/api/dist/index.mjs apps/workers/dist/*.mjs \
+            | awk '{print $9, $5}'
+
+  docker:
+    name: build container image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Built but not pushed. Pushing is a deploy action; this only proves the
+      # image still builds, including the typecheck and the doctor smoke test
+      # baked into the Dockerfile.
+      - name: Build builder image
+        run: docker build -f docker/builder/Dockerfile -t deploy-builder:ci .
+
+      - name: Image self-check
+        run: docker run --rm deploy-builder:ci doctor
+
+  terraform:
+    name: terraform plan
+    runs-on: ubuntu-latest
+    # A fork PR has no access to secrets, so OIDC cannot work. Skipping is
+    # correct: the alternative is a red check nobody can fix.
+    if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.8
+
+      - name: Assume the read-only plan role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PLAN_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      # The Lambda bundles must exist: archive_file hashes them, so a plan
+      # without them reports spurious changes.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci && npm run build
+
+      - name: Format check
+        run: terraform fmt -check -recursive infra
+
+      - name: Validate and plan every stack
+        id: plan
+        run: |
+          set -o pipefail
+          for stack in network data app build edge monitoring; do
+            echo "::group::$stack"
+            terraform -chdir="infra/stacks/$stack" init -input=false -no-color
+            terraform -chdir="infra/stacks/$stack" validate -no-color
+            terraform -chdir="infra/stacks/$stack" plan -input=false -no-color -lock=false \
+              | tee "/tmp/plan-$stack.txt"
+            echo "::endgroup::"
+          done
+
+      - name: Comment the plan summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const stacks = ['network', 'data', 'app', 'build', 'edge', 'monitoring'];
+            const lines = stacks.map((s) => {
+              const text = fs.readFileSync(`/tmp/plan-${s}.txt`, 'utf8');
+              const match = text.match(/Plan: .*/) ?? text.match(/No changes\..*/);
+              return `| \`${s}\` | ${match ? match[0] : 'see log'} |`;
+            });
+            const body = [
+              '### Terraform plan',
+              '',
+              '| stack | result |',
+              '| --- | --- |',
+              ...lines,
+            ].join('\n');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
+
+  aws-checks:
+    name: integration and security tests
+    runs-on: ubuntu-latest
+    needs: check
+    if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.8
+
+      - name: Assume the read-only plan role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PLAN_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      - run: npm ci && npm run build
+
+      # Runs against the -test table, never the real one: the setup refuses any
+      # table whose name does not end in "-test".
+      - name: Integration tests
+        run: npm run test:aws

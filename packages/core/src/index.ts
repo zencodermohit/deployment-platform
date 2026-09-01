@@ -94,3 +94,12 @@ export {
   CACHE_IMMUTABLE,
   CACHE_REVALIDATE,
 } from './content-types.js';
+
+export {
+  emitMetrics,
+  METRICS,
+  METRIC_NAMESPACE,
+  type EmitOptions,
+  type MetricInput,
+  type Unit,
+} from './metrics.js';

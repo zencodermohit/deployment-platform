@@ -55,7 +55,9 @@ export async function extractSource(
   await mkdir(stagingDir, { recursive: true });
 
   const violations: string[] = [];
-  let limitError: BuildError | null = null;
+  // Annotated explicitly: assigned inside the filter closure, which stops
+  // TypeScript narrowing it usefully at the throw site below.
+  let limitError: BuildError | undefined;
   let fileCount = 0;
   let totalBytes = 0;
 
@@ -109,9 +111,10 @@ export async function extractSource(
   });
 
   // Limits first: a zip bomb is a more urgent finding than a stray bad path.
-  if (limitError) {
+  const breach: BuildError | undefined = limitError;
+  if (breach) {
     await rm(stagingDir, { recursive: true, force: true });
-    throw limitError;
+    throw breach;
   }
 
   if (violations.length > 0) {

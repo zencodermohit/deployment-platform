@@ -44,8 +44,8 @@ export async function runBuilder(
   const outputDir = path.join(scratch, 'out');
   const workDir = path.join(scratch, 'work');
 
-  let stdout = '';
-  let stderr = '';
+  let stdout: string;
+  let stderr: string;
   let code = 0;
 
   try {

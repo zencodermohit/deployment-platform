@@ -1,0 +1,92 @@
+name: Deploy
+
+# Manual only, and gated on a GitHub Environment that requires approval.
+#
+# Deliberately NOT automatic on push to main. This applies infrastructure and
+# pushes the image that runs untrusted code; the roadmap's rule is that
+# production apply requires a human (docs/07-roadmap.md, M7). Auto-deploying
+# a Terraform apply is how an unreviewed plan reaches production at 2am.
+on:
+  workflow_dispatch:
+    inputs:
+      stacks:
+        description: 'Stacks to apply, space separated'
+        required: true
+        default: 'app build monitoring'
+      push_image:
+        description: 'Rebuild and push the builder image first'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Configure this environment with required reviewers in repo settings.
+    # Without that, the gate is decorative.
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.8
+
+      - name: Assume the deploy role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      - run: npm ci
+
+      - name: Verify before deploying
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test
+
+      - run: npm run build
+
+      - name: Build and push the builder image
+        if: inputs.push_image
+        run: |
+          set -euo pipefail
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          REPO="$ACCOUNT.dkr.ecr.ap-south-1.amazonaws.com/deployment-platform-builder"
+          aws ecr get-login-password --region ap-south-1 \
+            | docker login --username AWS --password-stdin "${REPO%%/*}"
+          docker build -f docker/builder/Dockerfile -t "$REPO:${{ github.sha }}" -t "$REPO:latest" .
+          docker push "$REPO:${{ github.sha }}"
+          docker push "$REPO:latest"
+
+      - name: Apply
+        run: |
+          set -euo pipefail
+          for stack in ${{ inputs.stacks }}; do
+            echo "::group::$stack"
+            terraform -chdir="infra/stacks/$stack" init -input=false -no-color
+            terraform -chdir="infra/stacks/$stack" apply -input=false -auto-approve -no-color
+            echo "::endgroup::"
+          done
+
+      - name: Smoke test the API
+        run: |
+          API=$(terraform -chdir=infra/stacks/app output -raw api_url)
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$API/health")
+          echo "GET $API/health -> $code"
+          [ "$code" = "200" ]

@@ -31,7 +31,9 @@
     "packages/*/src/**/*.ts",
     "apps/*/src/**/*.ts",
     "tests/**/*.ts",
-    "scripts/**/*.mjs"
+    "scripts/**/*.mjs",
+    "*.config.ts",
+    "eslint.config.js"
   ],
   "exclude": ["node_modules", "**/dist", ".out", ".work"]
 }

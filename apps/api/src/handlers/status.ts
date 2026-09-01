@@ -12,7 +12,13 @@
  */
 
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { isTerminal, type Deployment, type DeploymentStatus } from '@platform/core';
+import {
+  emitMetrics,
+  isTerminal,
+  METRICS,
+  type Deployment,
+  type DeploymentStatus,
+} from '@platform/core';
 import {
   getDeploymentById,
   setActiveDeployment,
@@ -63,6 +69,31 @@ export async function handleStatusCallback(req: HttpRequest): Promise<HttpRespon
   // deployment, in which case the container's late report is simply ignored.
   if (!result.won) {
     return json(200, { applied: false, reason: 'the deployment is no longer in that state' });
+  }
+
+  if (isTerminal(to)) {
+    const durationMs = Date.now() - new Date(deployment.createdAt).getTime();
+    emitMetrics({
+      // Status only — a deployment id here would create a new CloudWatch metric
+      // per deployment, which is how an observability bill runs away.
+      dimensions: { Outcome: to },
+      metrics: [
+        { name: METRICS.deploymentOutcome, value: 1, unit: 'Count' },
+        { name: METRICS.buildDuration, value: durationMs, unit: 'Milliseconds' },
+        ...(body.artifactBytes
+          ? [{ name: METRICS.artifactBytes, value: body.artifactBytes, unit: 'Bytes' as const }]
+          : []),
+        ...(body.fileCount
+          ? [{ name: METRICS.artifactFiles, value: body.fileCount, unit: 'Count' as const }]
+          : []),
+      ],
+      properties: {
+        msg: 'deployment finished',
+        deploymentId: deployment.deploymentId,
+        framework: body.framework ?? deployment.framework,
+        errorCode: body.error?.code ?? null,
+      },
+    });
   }
 
   if (to === 'DEPLOYED') {

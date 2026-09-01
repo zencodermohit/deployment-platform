@@ -17,7 +17,7 @@
  */
 
 import { failDeployment, getDeploymentById } from '@platform/data';
-import { isTerminal, type DeploymentStatus } from '@platform/core';
+import { emitMetrics, isTerminal, METRICS } from '@platform/core';
 import { log } from './shared.js';
 
 interface TaskStateChangeEvent {
@@ -53,7 +53,7 @@ export async function handler(event: TaskStateChangeEvent): Promise<void> {
   // stops its task. The container already reported DEPLOYED, so there is
   // nothing to do — and saying so is cheaper than a conditional write that
   // would fail anyway.
-  if (isTerminal(deployment.status as DeploymentStatus)) {
+  if (isTerminal(deployment.status)) {
     log('debug', 'task stopped after reporting a terminal state; nothing to do', {
       deploymentId,
       status: deployment.status,
@@ -66,6 +66,14 @@ export async function handler(event: TaskStateChangeEvent): Promise<void> {
   const { code, message } = explain(exitCode, detail.stopCode, detail.stoppedReason, container?.reason);
 
   const result = await failDeployment(deployment, 'reconciler', { code, message, exitCode });
+
+  if (result.won) {
+    emitMetrics({
+      dimensions: { Reason: code },
+      metrics: [{ name: METRICS.reconciledFailures, value: 1, unit: 'Count' }],
+      properties: { msg: 'reconciled a task that died without reporting', deploymentId },
+    });
+  }
 
   log(result.won ? 'info' : 'debug', result.won ? 'failed a deployment whose task died' : 'lost the race to report failure', {
     deploymentId,
