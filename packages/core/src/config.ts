@@ -139,9 +139,18 @@ export function loadConfig(
     artifactPrefix: artifactPrefix.replace(/\/+$/, ''),
     statusUrl: require_(env, 'STATUS_URL'),
     statusToken,
-    // Both are credentials in their own right: the token authorises status
-    // writes, the URL grants read access to the source archive.
-    secrets: [statusToken, sourceUrl],
+    // Everything here is a credential in its own right: the token authorises
+    // status writes, the presigned URL grants read access to the source
+    // archive, and the AWS session credentials grant writes to this
+    // deployment's prefix. Build tools print their environment more often than
+    // you would expect, so all of them are scrubbed from every log line.
+    secrets: [
+      statusToken,
+      sourceUrl,
+      ...['AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_ACCESS_KEY_ID']
+        .map((key) => str(env, key))
+        .filter((value): value is string => value !== undefined),
+    ],
   };
 }
 

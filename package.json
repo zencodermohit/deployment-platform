@@ -27,6 +27,9 @@
     "build:workers": "node apps/workers/build.mjs"
   },
   "devDependencies": {
+    "@aws-sdk/client-cloudfront": "^3.1124.0",
+    "@aws-sdk/client-ecs": "^3.1124.0",
+    "@aws-sdk/client-iam": "^3.1124.0",
     "@types/node": "^22.10.2",
     "aws-sdk-client-mock": "^4.1.0",
     "esbuild": "^0.24.2",

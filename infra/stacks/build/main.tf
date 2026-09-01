@@ -176,36 +176,57 @@ resource "aws_iam_role_policy_attachment" "task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# The role the untrusted container runs as.
-resource "aws_iam_role" "task" {
-  name               = "${var.project}-build-task"
-  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+# The artifact-writer role. NOT attached to the task — see the task definition,
+# which deliberately has no task_role_arn at all.
+#
+# Why: a task role is shared by every build, so the narrowest it can be scoped
+# is "any project's prefix". An IAM simulation proved exactly that — the build
+# container was allowed to write into another project's artifacts, which makes
+# the prefix-scoping claim in threat T4 untrue.
+#
+# One role per deployment is impractical. The answer is the same one used for
+# the source archive: the trusted side mints a narrow, short-lived credential.
+# The dispatcher assumes THIS role with a session policy naming exactly one
+# deployment prefix, and hands the resulting credentials to the container.
+# Effective permissions are the intersection, so the container can write to its
+# own prefix and nowhere else.
+resource "aws_iam_role" "artifacts_writer" {
+  name = "${var.project}-build-artifacts"
+  # Trusted by the dispatcher only. ecs-tasks cannot assume it, so a container
+  # cannot obtain the unscoped version through the metadata endpoint.
+  assume_role_policy   = data.aws_iam_policy_document.artifacts_writer_assume.json
+  max_session_duration = 3600
+}
+
+data "aws_iam_policy_document" "artifacts_writer_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "AWS"
+      identifiers = [aws_iam_role.worker["dispatcher"].arn]
+    }
+  }
 }
 
 data "aws_iam_policy_document" "task" {
   statement {
-    sid     = "WriteArtifactsOnly"
+    sid     = "WriteArtifacts"
     effect  = "Allow"
     actions = ["s3:PutObject"]
-    # Scoped to the projects namespace. Not the bucket, not another prefix.
+    # The ceiling. The session policy applied at assume time narrows this to a
+    # single deployment prefix; this bound only limits how far that can reach.
     resources = ["${local.artifacts_bucket_arn}/projects/*"]
-  }
-
-  statement {
-    sid       = "OwnLogStream"
-    effect    = "Allow"
-    actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
-    resources = ["${aws_cloudwatch_log_group.builds.arn}:*"]
   }
 
   # Nothing else. No dynamodb, no sqs, no secretsmanager, no ecr, no
   # s3:GetObject, no s3:DeleteObject. The source arrives as a presigned URL, so
-  # reading it needs no permission at all.
+  # reading it needs no permission at all. Logs go through the awslogs driver,
+  # which uses the EXECUTION role, not this one.
 }
 
 resource "aws_iam_role_policy" "task" {
-  name   = "${var.project}-build-task"
-  role   = aws_iam_role.task.id
+  name   = "${var.project}-build-artifacts"
+  role   = aws_iam_role.artifacts_writer.id
   policy = data.aws_iam_policy_document.task.json
 }
 
@@ -224,7 +245,10 @@ resource "aws_ecs_task_definition" "builder" {
   }
 
   execution_role_arn = aws_iam_role.task_execution.arn
-  task_role_arn      = aws_iam_role.task.arn
+
+  # NO task_role_arn, deliberately. The container has no AWS identity of its
+  # own — nothing to find at the ECS credential metadata endpoint. Its only
+  # credentials are the prefix-scoped, one-hour ones the dispatcher hands it.
 
   container_definitions = jsonencode([
     {

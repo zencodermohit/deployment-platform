@@ -8,6 +8,7 @@
     "@aws-sdk/client-ecs": "^3.716.0",
     "@aws-sdk/client-s3": "^3.716.0",
     "@aws-sdk/lib-dynamodb": "^3.716.0",
-    "@aws-sdk/s3-request-presigner": "^3.716.0"
+    "@aws-sdk/s3-request-presigner": "^3.716.0",
+    "@aws-sdk/client-sts": "^3.716.0"
   }
 }

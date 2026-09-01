@@ -101,16 +101,17 @@ resource "aws_lambda_function" "worker" {
 
   environment {
     variables = {
-      TABLE_NAME        = local.table_name
-      SOURCES_BUCKET    = local.sources_bucket
-      ARTIFACTS_BUCKET  = local.artifacts_bucket
-      ECS_CLUSTER       = aws_ecs_cluster.main.name
-      TASK_DEFINITION   = aws_ecs_task_definition.builder.family
-      SUBNET_IDS        = join(",", local.subnet_ids)
-      SECURITY_GROUP_ID = local.security_group_id
-      API_URL           = local.api_url
-      BUILD_TIMEOUT_SEC = tostring(var.build_timeout_sec)
-      MAX_ARCHIVE_BYTES = tostring(var.max_archive_bytes)
+      TABLE_NAME                = local.table_name
+      SOURCES_BUCKET            = local.sources_bucket
+      ARTIFACTS_BUCKET          = local.artifacts_bucket
+      ECS_CLUSTER               = aws_ecs_cluster.main.name
+      TASK_DEFINITION           = aws_ecs_task_definition.builder.family
+      SUBNET_IDS                = join(",", local.subnet_ids)
+      SECURITY_GROUP_ID         = local.security_group_id
+      API_URL                   = local.api_url
+      BUILD_TIMEOUT_SEC         = tostring(var.build_timeout_sec)
+      MAX_ARCHIVE_BYTES         = tostring(var.max_archive_bytes)
+      ARTIFACTS_WRITER_ROLE_ARN = aws_iam_role.artifacts_writer.arn
     }
   }
 
@@ -162,12 +163,20 @@ data "aws_iam_policy_document" "dispatcher" {
     sid       = "PassBuildRolesOnly"
     effect    = "Allow"
     actions   = ["iam:PassRole"]
-    resources = [aws_iam_role.task.arn, aws_iam_role.task_execution.arn]
+    resources = [aws_iam_role.task_execution.arn]
     condition {
       test     = "StringEquals"
       variable = "iam:PassedToService"
       values   = ["ecs-tasks.amazonaws.com"]
     }
+  }
+
+  # Mint the prefix-scoped credentials handed to each build.
+  statement {
+    sid       = "VendScopedArtifactCredentials"
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = [aws_iam_role.artifacts_writer.arn]
   }
 }
 

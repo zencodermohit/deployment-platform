@@ -22,6 +22,7 @@
 
 import { createHash, randomBytes } from 'node:crypto';
 import { ECSClient, RunTaskCommand } from '@aws-sdk/client-ecs';
+import { AssumeRoleCommand, STSClient } from '@aws-sdk/client-sts';
 import {
   claimDeployment,
   failDeployment,
@@ -32,6 +33,61 @@ import { fetchSourceToS3, presignSource, SourceError } from './source.js';
 import { env, log } from './shared.js';
 
 const ecs = new ECSClient({});
+const sts = new STSClient({});
+
+/**
+ * Mint credentials that can write to exactly ONE deployment's prefix.
+ *
+ * The build task has no role of its own, so these are its only AWS identity.
+ * `AssumeRole` with a session policy takes the intersection of the role's
+ * permissions and the policy below, and the policy names a single prefix — so
+ * even a fully compromised container cannot touch another project's artifacts.
+ *
+ * An IAM simulation showed the previous shared task role allowed exactly that
+ * cross-tenant write, which is what prompted this.
+ */
+async function mintArtifactCredentials(
+  deploymentId: string,
+  artifactPrefix: string,
+): Promise<{ accessKeyId: string; secretAccessKey: string; sessionToken: string }> {
+  const bucket = env('ARTIFACTS_BUCKET');
+
+  const sessionPolicy = {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: 's3:PutObject',
+        Resource: [
+          `arn:aws:s3:::${bucket}/${artifactPrefix}/*`,
+          // The manifest sits beside the prefix, outside what the edge serves.
+          `arn:aws:s3:::${bucket}/${artifactPrefix}.manifest.json`,
+        ],
+      },
+    ],
+  };
+
+  const assumed = await sts.send(
+    new AssumeRoleCommand({
+      RoleArn: env('ARTIFACTS_WRITER_ROLE_ARN'),
+      // Appears in CloudTrail, so an S3 write is traceable to a deployment.
+      RoleSessionName: deploymentId.slice(0, 64),
+      Policy: JSON.stringify(sessionPolicy),
+      DurationSeconds: 3600,
+    }),
+  );
+
+  const creds = assumed.Credentials;
+  if (!creds?.AccessKeyId || !creds.SecretAccessKey || !creds.SessionToken) {
+    throw new Error('STS returned no credentials for the artifact writer role');
+  }
+
+  return {
+    accessKeyId: creds.AccessKeyId,
+    secretAccessKey: creds.SecretAccessKey,
+    sessionToken: creds.SessionToken,
+  };
+}
 
 interface SqsRecord {
   messageId: string;
@@ -92,6 +148,8 @@ async function dispatchOne(record: SqsRecord): Promise<void> {
     const sourceUrl = await presignSource(env('SOURCES_BUCKET'), sourceKey);
     log('info', 'source staged', { deploymentId, bytes: fetched.bytes, commitSha: fetched.commitSha });
 
+    const creds = await mintArtifactCredentials(deploymentId, deployment.artifactPrefix);
+
     // --- 3. Launch, then return. ---
     const task = await ecs.send(
       new RunTaskCommand({
@@ -125,6 +183,12 @@ async function dispatchOne(record: SqsRecord): Promise<void> {
                 { name: 'STATUS_URL', value: `${env('API_URL')}/internal/deployments/${deploymentId}/status` },
                 { name: 'STATUS_TOKEN', value: statusToken },
                 { name: 'BUILD_TIMEOUT_SEC', value: env('BUILD_TIMEOUT_SEC', '600') },
+
+                // The container's entire AWS identity: write to one prefix, for
+                // one hour. The SDK inside picks these up automatically.
+                { name: 'AWS_ACCESS_KEY_ID', value: creds.accessKeyId },
+                { name: 'AWS_SECRET_ACCESS_KEY', value: creds.secretAccessKey },
+                { name: 'AWS_SESSION_TOKEN', value: creds.sessionToken },
               ],
             },
           ],
