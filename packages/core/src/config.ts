@@ -10,6 +10,7 @@
  */
 
 import { BuildError } from './errors.js';
+import { generateDeploymentId } from './ids.js';
 
 export type BuilderMode = 'local';
 
@@ -128,14 +129,6 @@ function level(env: NodeJS.ProcessEnv, key: string): BuilderConfig['logLevel'] {
   const raw = (str(env, key) ?? 'info').toLowerCase();
   if (raw === 'debug' || raw === 'info' || raw === 'warn' || raw === 'error') return raw;
   throw new BuildError('CONFIG_ERROR', `${key} must be debug|info|warn|error, got "${raw}"`);
-}
-
-/** Unguessable by design: deployment IDs appear in URLs (threat T5). */
-export function generateDeploymentId(): string {
-  const bytes = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(bytes);
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-  return `dep_${hex}`;
 }
 
 /** Config as loggable fields. Never includes anything from `secrets`. */
