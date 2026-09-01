@@ -1,0 +1,1000 @@
+<title>Control Plane</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+:root{
+  --ground:#F2F4F3; --surface:#FFFFFF; --surface-2:#F8FAF9;
+  --ink:#151A19; --ink-2:#4E5A57; --ink-3:#78837F;
+  --rule:#DBE2DF; --rule-2:#C2CCC8;
+  --accent:#0E6E60; --accent-2:#0A5148; --accent-soft:#E1EFEB;
+  --hazard:#A8380F; --hazard-soft:#F9E9E2;
+  --amber:#7A5D00; --amber-soft:#F5EEDA;
+  --code-bg:#F3F6F5;
+  --shadow:0 1px 2px rgba(20,30,28,.05), 0 10px 28px -16px rgba(20,30,28,.18);
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0C100F; --surface:#131918; --surface-2:#0F1514;
+    --ink:#E7ECEA; --ink-2:#9BA7A3; --ink-3:#6D7975;
+    --rule:#243130; --rule-2:#33423F;
+    --accent:#54C6B0; --accent-2:#7CDAC6; --accent-soft:#0F2C27;
+    --hazard:#E98B64; --hazard-soft:#2C1811;
+    --amber:#D8B44B; --amber-soft:#2A2312;
+    --code-bg:#0E1413;
+    --shadow:0 1px 2px rgba(0,0,0,.40), 0 10px 28px -16px rgba(0,0,0,.70);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0C100F; --surface:#131918; --surface-2:#0F1514;
+  --ink:#E7ECEA; --ink-2:#9BA7A3; --ink-3:#6D7975;
+  --rule:#243130; --rule-2:#33423F;
+  --accent:#54C6B0; --accent-2:#7CDAC6; --accent-soft:#0F2C27;
+  --hazard:#E98B64; --hazard-soft:#2C1811;
+  --amber:#D8B44B; --amber-soft:#2A2312;
+  --code-bg:#0E1413;
+  --shadow:0 1px 2px rgba(0,0,0,.40), 0 10px 28px -16px rgba(0,0,0,.70);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:15px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent); text-underline-offset:2px; text-decoration-thickness:1px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:2px}
+
+/* ---------- shell ---------- */
+.shell{display:grid; grid-template-columns:246px minmax(0,1fr); gap:0; max-width:1180px; margin:0 auto}
+.rail{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:34px 22px 40px 26px; border-right:1px solid var(--rule);
+}
+.rail-title{font-size:13px; font-weight:600; letter-spacing:.02em; margin:0 0 2px}
+.rail-sub{font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); margin:0 0 22px}
+.navgroup{margin-bottom:20px}
+.navgroup-label{
+  font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-3); margin:0 0 8px; padding-bottom:6px; border-bottom:1px solid var(--rule);
+}
+.rail a{
+  display:flex; gap:9px; align-items:baseline;
+  padding:4px 0; font-size:13.5px; color:var(--ink-2); text-decoration:none; line-height:1.35;
+}
+.rail a:hover{color:var(--ink)}
+.rail a.on{color:var(--accent); font-weight:600}
+.rail a .n{font-family:var(--mono); font-size:10.5px; color:var(--ink-3); flex:none; width:18px}
+.rail a.on .n{color:var(--accent)}
+
+main{padding:56px 46px 140px; min-width:0}
+.wrap{max-width:72ch}
+
+/* ---------- masthead ---------- */
+.mast{margin-bottom:52px}
+.eyebrow{
+  font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--hazard); margin:0 0 14px;
+}
+h1{
+  font-size:clamp(34px,4.6vw,50px); line-height:1.04; letter-spacing:-.025em;
+  font-weight:600; margin:0 0 18px; text-wrap:balance;
+}
+.standfirst{
+  font-family:var(--serif); font-size:18.5px; line-height:1.55; color:var(--ink-2);
+  max-width:60ch; margin:0;
+}
+.meta{
+  display:flex; flex-wrap:wrap; gap:8px; margin-top:26px;
+  font-family:var(--mono); font-size:11px; letter-spacing:.04em;
+}
+.meta span{
+  border:1px solid var(--rule-2); border-radius:2px; padding:4px 9px; color:var(--ink-2);
+}
+
+/* ---------- sections ---------- */
+section{scroll-margin-top:24px; padding-top:46px}
+h2{
+  font-size:25px; letter-spacing:-.018em; font-weight:600; margin:0 0 6px; text-wrap:balance;
+}
+.h2num{
+  font-family:var(--mono); font-size:11px; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--accent); display:block; margin-bottom:9px;
+}
+h3{font-size:16.5px; font-weight:600; letter-spacing:-.008em; margin:34px 0 10px; text-wrap:balance}
+h4{font-size:13px; font-weight:600; margin:22px 0 8px; letter-spacing:.01em}
+p{margin:0 0 14px; max-width:70ch}
+.lede{color:var(--ink-2); max-width:66ch}
+ul,ol{margin:0 0 16px; padding-left:20px; max-width:70ch}
+li{margin-bottom:6px}
+li::marker{color:var(--ink-3)}
+strong{font-weight:600}
+hr{border:0; border-top:1px solid var(--rule); margin:44px 0 0}
+
+code{
+  font-family:var(--mono); font-size:.855em; background:var(--code-bg);
+  padding:1.5px 5px; border-radius:3px; border:1px solid var(--rule);
+}
+pre{
+  font-family:var(--mono); font-size:12.5px; line-height:1.62;
+  background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+  padding:16px 18px; overflow-x:auto; margin:0 0 18px; color:var(--ink-2);
+}
+pre code{background:none; border:0; padding:0; font-size:inherit}
+pre b{color:var(--ink); font-weight:600}
+pre .hz{color:var(--hazard); font-weight:600}
+pre .ac{color:var(--accent); font-weight:600}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto; margin:0 0 20px; border:1px solid var(--rule); border-radius:4px; background:var(--surface)}
+table{border-collapse:collapse; width:100%; font-size:13.5px; min-width:460px}
+th{
+  text-align:left; font-family:var(--mono); font-size:10.5px; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--ink-3); font-weight:500;
+  padding:11px 14px; border-bottom:1px solid var(--rule-2); white-space:nowrap;
+  background:var(--surface-2);
+}
+td{padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; color:var(--ink-2)}
+td:first-child{color:var(--ink); font-weight:500}
+tr:last-child td{border-bottom:0}
+.num{font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap}
+th.num{text-align:right}
+
+/* ---------- callouts ---------- */
+.fix{
+  border-left:2px solid var(--hazard); background:var(--hazard-soft);
+  padding:16px 18px 14px; margin:0 0 20px; border-radius:0 4px 4px 0;
+}
+.fix .tag{
+  font-family:var(--mono); font-size:10px; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--hazard); display:block; margin-bottom:7px;
+}
+.fix p{font-family:var(--serif); font-size:15px; margin:0; color:var(--ink); max-width:64ch}
+.fix p+p{margin-top:10px}
+
+.note{
+  border-left:2px solid var(--accent); background:var(--accent-soft);
+  padding:15px 18px; margin:0 0 20px; border-radius:0 4px 4px 0;
+}
+.note p{margin:0; font-size:14px; max-width:64ch}
+.note p+p{margin-top:9px}
+
+/* ---------- planes diagram ---------- */
+.planes{display:grid; grid-template-columns:1fr auto 1fr; gap:0; margin:0 0 22px; align-items:stretch}
+.plane{border:1px solid var(--rule); background:var(--surface); padding:16px 18px; border-radius:4px}
+.plane.t{border-top:2px solid var(--accent)}
+.plane.u{border-top:2px solid var(--hazard)}
+.plane h5{
+  font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  margin:0 0 12px; font-weight:500;
+}
+.plane.t h5{color:var(--accent)}
+.plane.u h5{color:var(--hazard)}
+.plane ul{list-style:none; padding:0; margin:0; font-size:13px}
+.plane li{margin-bottom:5px; color:var(--ink-2)}
+.plane li.deny{color:var(--hazard); font-family:var(--mono); font-size:11.5px}
+.bound{
+  width:44px; position:relative; display:flex; align-items:center; justify-content:center;
+}
+.bound::before{
+  content:""; position:absolute; top:6px; bottom:6px; left:50%;
+  border-left:2px dashed var(--hazard); opacity:.55;
+}
+.bound span{
+  position:relative; background:var(--ground); font-family:var(--mono); font-size:9px;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--hazard);
+  writing-mode:vertical-rl; padding:8px 3px;
+}
+
+/* ---------- state machine ---------- */
+.sm{display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:0 0 8px}
+.st{
+  font-family:var(--mono); font-size:11px; letter-spacing:.05em; padding:5px 10px;
+  border:1px solid var(--rule-2); border-radius:2px; background:var(--surface); color:var(--ink-2);
+  white-space:nowrap;
+}
+.st.ok{border-color:var(--accent); color:var(--accent); background:var(--accent-soft)}
+.st.run{border-color:var(--amber); color:var(--amber); background:var(--amber-soft)}
+.st.bad{border-color:var(--hazard); color:var(--hazard); background:var(--hazard-soft)}
+.arw{color:var(--ink-3); font-family:var(--mono); font-size:12px}
+
+/* ---------- flow steps ---------- */
+.flow{list-style:none; padding:0; margin:0 0 20px; counter-reset:f}
+.flow li{
+  counter-increment:f; position:relative; padding:0 0 16px 34px;
+  border-left:1px solid var(--rule); margin:0;
+}
+.flow li:last-child{border-left-color:transparent; padding-bottom:0}
+.flow li::before{
+  content:counter(f,decimal-leading-zero); position:absolute; left:-9px; top:0;
+  font-family:var(--mono); font-size:9.5px; background:var(--ground); color:var(--accent);
+  width:18px; text-align:center; padding:1px 0; font-weight:600;
+}
+.flow b{display:block; font-size:13.5px; margin-bottom:3px}
+.flow span{font-size:13.5px; color:var(--ink-2); display:block; max-width:64ch}
+.flow em{font-family:var(--mono); font-style:normal; font-size:11.5px; color:var(--ink-3)}
+
+/* ---------- adr cards ---------- */
+.adrs{display:grid; gap:0; border:1px solid var(--rule); border-radius:4px; overflow:hidden; margin-bottom:20px}
+.adr{padding:15px 18px; border-bottom:1px solid var(--rule); background:var(--surface)}
+.adr:last-child{border-bottom:0}
+.adr .id{font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; color:var(--accent)}
+.adr b{display:block; font-size:14.5px; margin:3px 0 5px; letter-spacing:-.005em}
+.adr p{margin:0; font-size:13px; color:var(--ink-2); max-width:64ch}
+.adr .alt{
+  margin-top:8px; font-family:var(--serif); font-style:italic; font-size:13px; color:var(--ink-3);
+}
+
+/* ---------- misc ---------- */
+.kv{display:grid; grid-template-columns:auto 1fr; gap:4px 16px; font-size:13.5px; margin:0 0 18px}
+.kv dt{font-family:var(--mono); font-size:11.5px; color:var(--ink-3); white-space:nowrap}
+.kv dd{margin:0; color:var(--ink-2)}
+.crit{color:var(--hazard); font-weight:600}
+.foot{
+  margin-top:64px; padding-top:22px; border-top:1px solid var(--rule);
+  font-size:12.5px; color:var(--ink-3); max-width:70ch;
+}
+.foot code{font-size:11.5px}
+
+.railtoggle{display:none}
+
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .rail{
+    position:static; height:auto; border-right:0; border-bottom:1px solid var(--rule);
+    padding:24px 22px;
+  }
+  .railtoggle{
+    display:block; width:100%; text-align:left; background:var(--surface); color:var(--ink);
+    border:1px solid var(--rule-2); border-radius:3px; padding:9px 12px; font-family:var(--mono);
+    font-size:11px; letter-spacing:.09em; text-transform:uppercase; cursor:pointer;
+  }
+  .navwrap[hidden]{display:none}
+  .navwrap{margin-top:18px}
+  main{padding:34px 22px 100px}
+  .planes{grid-template-columns:1fr; gap:10px}
+  .bound{width:auto; height:30px}
+  .bound::before{top:50%; bottom:auto; left:8px; right:8px; border-left:0; border-top:2px dashed var(--hazard)}
+  .bound span{writing-mode:horizontal-tb; padding:3px 8px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+</style>
+
+<div class="shell">
+<nav class="rail">
+  <p class="rail-title">Control Plane</p>
+  <p class="rail-sub">Architecture Spec · Rev A</p>
+  <button class="railtoggle" id="tg" aria-expanded="false">Contents</button>
+  <div class="navwrap" id="nv">
+    <div class="navgroup">
+      <p class="navgroup-label">Review</p>
+      <a href="#verdict"><span class="n">—</span>Verdict</a>
+      <a href="#corrections"><span class="n">—</span>Ten corrections</a>
+    </div>
+    <div class="navgroup">
+      <p class="navgroup-label">Specification</p>
+      <a href="#scope"><span class="n">00</span>Scope</a>
+      <a href="#arch"><span class="n">01</span>Architecture</a>
+      <a href="#data"><span class="n">02</span>Data model</a>
+      <a href="#api"><span class="n">03</span>API</a>
+      <a href="#build"><span class="n">04</span>Build contract</a>
+      <a href="#threat"><span class="n">05</span>Threat model</a>
+      <a href="#cost"><span class="n">06</span>Cost</a>
+      <a href="#roadmap"><span class="n">07</span>Roadmap</a>
+      <a href="#testing"><span class="n">08</span>Testing</a>
+    </div>
+    <div class="navgroup">
+      <p class="navgroup-label">Decisions</p>
+      <a href="#adr"><span class="n">—</span>ADR 0001–0009</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<header class="mast">
+  <p class="eyebrow">Design review + specification</p>
+  <h1>A deployment platform, corrected</h1>
+  <p class="standfirst">The original brief had the right instincts and one systemic weakness: it described intent, not mechanism. This is the same architecture with every arrow resolved into an actual API call — and ten places where the reasoning had to change.</p>
+  <div class="meta">
+    <span>Portfolio build</span><span>~$100 AWS credits</span><span>Static output only</span><span>8–11 weeks</span>
+  </div>
+</header>
+
+<section id="verdict">
+  <span class="h2num">Review</span>
+  <h2>Verdict</h2>
+  <p class="lede">Read as a design-review submission, this is a good document. The spine is correct, and most people building this get at least two of the following wrong.</p>
+
+  <h3>What was already right</h3>
+  <ul>
+    <li><strong>Control plane / build plane split</strong> as the organizing principle, not an afterthought.</li>
+    <li><strong>Treating repository code as hostile.</strong> Correct, and correctly identified as the central problem.</li>
+    <li><strong>Immutable artifacts with pointer-swap rollback</strong> instead of rebuilding.</li>
+    <li><strong>CloudFront → S3 directly</strong>, rather than proxying static assets through an application server.</li>
+    <li><strong>Conditional DynamoDB writes for idempotency</strong> under at-least-once delivery.</li>
+    <li><strong>An async API</strong> that returns a <code>deploymentId</code> and does not wait for the build.</li>
+  </ul>
+
+  <div class="fix">
+    <span class="tag">The systemic issue</span>
+    <p>It is a narrative, not a specification. Every place it says “and then X happens” without naming the mechanism is exactly where the build stalls in week two. The architecture isn't wrong — it's under-determined.</p>
+  </div>
+
+  <h3>What I'd change about the presentation</h3>
+  <p>Cut the self-assessment section (“Architecture 8.5–9/10”). Scoring your own work reads as insecurity, and the architecture speaks for itself. Same for the repeated “the reviewer said” framing — state the decision and own it.</p>
+</section>
+
+<hr>
+
+<section id="corrections">
+  <span class="h2num">Review</span>
+  <h2>Ten corrections</h2>
+  <p class="lede">Ranked by how much pain each one causes if left unaddressed.</p>
+
+  <h3>1. “Build Orchestrator” was an empty box</h3>
+  <p>The diagram showed SQS → Build Orchestrator → Fargate. There is no such AWS service; it has to be built, and the choice is load-bearing. Lambda cannot consume an SQS message and <em>wait</em> for a five-minute build. That box became four named components — dispatcher, source fetcher, reconciler, sweeper — and filling it in is most of the real engineering.</p>
+
+  <h3>2. SQS does not retry your build</h3>
+  <div class="fix">
+    <span class="tag">Conceptual error</span>
+    <p>The dispatcher deletes the SQS message the moment <code>RunTask</code> succeeds. The build fails ten minutes later, long after the message is gone. SQS retries cover <em>dispatch</em> failures, not <em>build</em> failures — so the original failure diagram assumed recovery the system did not have.</p>
+    <p>Worse: nothing in the original design would ever notice a container that got OOM-killed. That deployment sits in <code>BUILDING</code> forever, and nothing errors — the UI just spins.</p>
+  </div>
+
+  <h3>3. Edge routing was unspecified, and it's the hardest part</h3>
+  <p>CloudFront has no idea what a deployment is. Mapping <code>dep-abc.example.com</code> to an S3 prefix takes a CloudFront Function reading the <code>Host</code> header against a KeyValueStore. Three traps come with it, all of which bite on day one — covered in <a href="#arch">§01</a>.</p>
+
+  <h3>4. The container was handed a GitHub token</h3>
+  <div class="fix">
+    <span class="tag">Contradicts its own principle</span>
+    <p>The brief says assume <code>postinstall</code> is malicious — then has that same container clone the repository, which requires a credential granting read access to <em>every</em> repo the installation covers. A malicious <code>preinstall</code> exfiltrates it in under a second.</p>
+    <p>Fix: the trusted side fetches the tarball and hands over a 15-minute presigned S3 URL. The container never sees a token and never contacts GitHub.</p>
+  </div>
+
+  <h3>5. <code>.next/</code> is not a static artifact</h3>
+  <p>Listed as an upload target alongside <code>dist/</code> and <code>build/</code>. But <code>next build</code> produces a <em>server</em> — unless <code>output: 'export'</code> is set, there is nothing to put on S3. Leaving this ambiguous is how the project silently triples in scope. See <a href="#scope">§00</a>.</p>
+
+  <h3>6. Fargate has no timeout setting</h3>
+  <p>Listed as a config knob under resource limits. It isn't one. Timeouts are enforced twice: a watchdog inside the container, plus an external <code>StopTask</code>, because a wedged container will not kill itself. Related: Fargate ephemeral storage has a <strong>20 GiB floor</strong> — you cannot set it lower.</p>
+
+  <h3>7. The network isolation diagram was aspirational</h3>
+  <p>X-marks showed the build task blocked from internal services. In reality, a task with egress to npm has egress to the internet, and restricting it needs an egress proxy or Network Firewall (~$300/mo). The honest version is stronger anyway: isolation comes from the task having <em>nothing worth reaching and no credential worth stealing</em>.</p>
+
+  <h3>8. There was no data model</h3>
+  <p>A JSON blob, but no key schema, no GSIs, no access patterns. In DynamoDB the access patterns determine the table; designing it the other way round does not work. Two queries shape everything — see <a href="#data">§02</a>.</p>
+
+  <h3>9. Terraform sliced by AWS service</h3>
+  <p><code>vpc/</code>, <code>iam/</code>, <code>s3/</code>, <code>sqs/</code> groups resources by vendor taxonomy rather than by lifecycle. IAM roles belong with the thing they grant access to. Slice by stack — <code>network</code>, <code>data</code>, <code>build</code>, <code>edge</code>, <code>app</code> — so things that change together live together.</p>
+
+  <h3>10. No cost model, no test strategy</h3>
+  <p>The two questions any reviewer asks in the first five minutes. Both now have documents: <a href="#cost">§06</a> and <a href="#testing">§08</a>.</p>
+</section>
+
+<hr>
+
+<section id="scope">
+  <span class="h2num">00 · Scope</span>
+  <h2>What is and isn't being built</h2>
+  <p class="lede">Success is not feature count. It is whether the system demonstrates correct judgment on five specific problems: safe execution of untrusted code, asynchronous state management, idempotency under at-least-once delivery, immutable deployments, and reproducible infrastructure.</p>
+  <p>If the project demonstrates those five convincingly, it has succeeded with a small feature set. If it has many features and gets any of the five wrong, it has failed.</p>
+
+  <h3>Supported frameworks</h3>
+  <p>Detection is by convention, not magic. A project must produce a directory of static files.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Framework</th><th>Detection</th><th>Output</th></tr></thead>
+    <tbody>
+      <tr><td>Vite</td><td><code>vite</code> in deps</td><td><code>dist/</code></td></tr>
+      <tr><td>Create React App</td><td><code>react-scripts</code> in deps</td><td><code>build/</code></td></tr>
+      <tr><td>Astro (static)</td><td><code>astro</code> in deps</td><td><code>dist/</code></td></tr>
+      <tr><td>Next.js</td><td><code>next</code> <strong>and</strong> <code>output: 'export'</code></td><td><code>out/</code></td></tr>
+      <tr><td>Plain static</td><td>no build script</td><td>repo root</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><p>Anything else is rejected at validation time with a clear error, including Next.js without <code>output: 'export'</code>. <strong>Rejecting loudly beats guessing wrong</strong> — a platform that silently deploys an empty directory is worse than one that refuses.</p></div>
+
+  <h3>Explicitly out of scope</h3>
+  <p>Each is a defensible cut, not an oversight.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Excluded</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Server-side rendering</td><td>Means request-time compute, a router, cold-start handling — and running <em>untrusted</em> code continuously rather than for ten bounded minutes. A different threat model entirely.</td></tr>
+      <tr><td>Serverless functions</td><td>Same reason. Interesting, but doubles the system.</td></tr>
+      <tr><td>Build caching</td><td>Real value only at scale we won't reach; adds cross-tenant cache-poisoning surface.</td></tr>
+      <tr><td>Monorepos</td><td>Long tail of edge cases, near-zero learning value.</td></tr>
+      <tr><td>Teams, RBAC, billing</td><td>Product surface, not engineering substance.</td></tr>
+      <tr><td>Multi-region</td><td>Cost, and nothing learned that single-region doesn't teach.</td></tr>
+      <tr><td>Custom user domains</td><td>Per-domain ACM issuance and validation flows. Phase 3 at earliest.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Success criteria</h3>
+  <ul>
+    <li>A fresh AWS account reaches a working system from <code>terraform apply</code> plus one image push.</li>
+    <li>Deploying a public Vite repo produces a working URL in under 3 minutes.</li>
+    <li>A repo whose <code>postinstall</code> attempts to read AWS credentials obtains nothing useful. <strong>Tested, not assumed.</strong></li>
+    <li>Delivering the same SQS message twice produces exactly one build.</li>
+    <li>Killing a build container mid-run leaves the deployment <code>FAILED</code>, not stuck in <code>BUILDING</code>.</li>
+    <li>Rollback changes served content without running a build.</li>
+    <li>Always-on cost stays under $10/month; total spend stays inside the credit pool.</li>
+  </ul>
+</section>
+
+<hr>
+
+<section id="arch">
+  <span class="h2num">01 · Architecture</span>
+  <h2>Mechanism, not intent</h2>
+
+  <h3>The trust boundary</h3>
+  <p>There is exactly one security boundary in this system, and everything else is arranged around it.</p>
+  <div class="planes">
+    <div class="plane t">
+      <h5>Trusted · Control plane</h5>
+      <ul>
+        <li>API Gateway, Lambda</li>
+        <li>DynamoDB — source of truth</li>
+        <li>SQS + DLQ</li>
+        <li>GitHub App credentials</li>
+        <li>CloudFront KeyValueStore</li>
+        <li>Source-tarball fetcher</li>
+      </ul>
+    </div>
+    <div class="bound"><span>Boundary</span></div>
+    <div class="plane u">
+      <h5>Untrusted · Build plane</h5>
+      <ul>
+        <li>Ephemeral Fargate task</li>
+        <li>The user's repository</li>
+        <li><code>npm install</code> — lifecycle scripts run</li>
+        <li><code>npm run build</code></li>
+        <li class="deny">no GitHub token</li>
+        <li class="deny">no DynamoDB access</li>
+        <li class="deny">write to ONE S3 prefix</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note"><p>Isolation does not come from firewall rules. It comes from <strong>the task having nothing worth reaching and no credential worth stealing</strong>. Assume the container is fully compromised on every build, then ask what the attacker gets. The answer must be: a shell in a throwaway sandbox with write access to one S3 prefix that is about to be sealed.</p></div>
+
+  <h3>Components the original design didn't name</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Component</th><th>Service</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>Dispatcher</td><td>Lambda (SQS-triggered)</td><td>Claims the deployment, calls <code>ecs:RunTask</code>, never waits</td></tr>
+      <tr><td>Source fetcher</td><td>Lambda</td><td>Downloads the repo tarball via GitHub App, writes to S3</td></tr>
+      <tr><td>Reconciler</td><td>Lambda (EventBridge)</td><td>Detects tasks that died without reporting</td></tr>
+      <tr><td>Sweeper</td><td>Lambda (every 5 min)</td><td>Fails deployments past their deadline; repairs edge drift</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Deployment sequence</h3>
+  <ol class="flow">
+    <li><b>API accepts the request</b><span>Authz check, validation, resolve branch → commit SHA via GitHub App, <code>PutItem</code> as <code>QUEUED</code>, <code>SendMessage</code>. Returns <code>202</code> in ~200ms.</span><em>API Lambda · trusted</em></li>
+    <li><b>Dispatcher claims it</b><span>Conditional <code>UpdateItem</code>: <code>QUEUED → PROVISIONING</code>. If the condition fails, another worker owns it — delete the message and exit clean. <strong>This is the idempotency mechanism.</strong></span><em>Dispatcher Lambda · trusted</em></li>
+    <li><b>Source is fetched on the trusted side</b><span>GitHub tarball → <code>s3://sources/</code>, then a 15-minute presigned GET URL is generated for that single object.</span><em>Source fetcher · trusted</em></li>
+    <li><b>Task launches</b><span><code>ecs:RunTask</code> with overrides carrying the deployment ID, artifact prefix, presigned URL and status token. Task ARN stored. Message deleted.</span><em>~30–60s cold start</em></li>
+    <li><b>Build runs in isolation</b><span>Download, extract, detect framework, <code>npm ci</code>, <code>npm run build</code>, validate output, upload to an immutable prefix. Reports each phase through the scoped status API.</span><em>Fargate task · untrusted</em></li>
+    <li><b>Reconciler watches in parallel</b><span>EventBridge <code>ECS Task State Change</code>. Task <code>STOPPED</code> but deployment not terminal? Mark <code>FAILED</code> with the reason from <code>stopCode</code> and <code>exitCode</code>.</span><em>Reconciler Lambda · trusted</em></li>
+  </ol>
+
+  <h3>The retry problem</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Failure</th><th>Recovered by</th></tr></thead>
+    <tbody>
+      <tr><td>Dispatcher throws, <code>RunTask</code> throttled</td><td>SQS visibility timeout → redelivery → DLQ after 3 attempts</td></tr>
+      <tr><td>Build exits non-zero, times out, OOM</td><td><span class="crit">Not automatic.</span> Terminal <code>FAILED</code>. Retry is a user action creating a <em>new</em> deployment.</td></tr>
+      <tr><td>Task killed before reporting</td><td>Reconciler, via EventBridge</td></tr>
+      <tr><td>Task hangs, emits no event</td><td>Sweeper, past <code>deadlineAt</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>Automatic build retry is deliberately not implemented. A failing build usually fails deterministically; retrying burns credits to reach the same answer. Making retry a user action also keeps the failed attempt visible in history.</p>
+
+  <h3>Edge routing</h3>
+<pre><code>GET https://dep-abc123.example.com/about/
+        |
+        v
+CloudFront Function  <span class="hz">(viewer-request, sub-ms, NO network calls)</span>
+        +- read Host header      -> "dep-abc123.example.com"
+        +- KeyValueStore.get(host) -> "projects/p-1/deployments/dep-abc123"
+        +- URI ends "/" or no extension? -> append "index.html"
+        +- rewrite URI -> <b>/projects/p-1/deployments/dep-abc123/about/index.html</b>
+        |
+        v
+S3 origin  <span class="ac">(REST endpoint + OAC; bucket stays fully private)</span></code></pre>
+
+  <div class="fix">
+    <span class="tag">Three traps</span>
+    <p><strong>1.</strong> S3 REST origins do not serve directory indexes. <code>GET /about/</code> returns 403, not <code>about/index.html</code>. The website endpoint handles it but is HTTP-only and needs a public bucket — unacceptable. The function must append <code>index.html</code> itself.</p>
+    <p><strong>2.</strong> SPA fallback needs a CloudFront custom error response mapping 403/404 → <code>/index.html</code> with status <strong>200</strong>.</p>
+    <p><strong>3.</strong> Wildcard certificates are single-level. <code>*.example.com</code> does <em>not</em> cover <code>dep-abc.preview.example.com</code>. Keep subdomains one level deep.</p>
+  </div>
+
+  <h4>Where the active-deployment pointer lives</h4>
+  <p>DynamoDB is the source of truth; the KeyValueStore is a materialized read replica for the edge. The original design said rollback “changes the pointer” without saying where it lives. It lives in both, and the ordering matters.</p>
+<pre><code>promote(projectId, deploymentId):
+  1. verify deployment belongs to project and status == DEPLOYED
+  2. DynamoDB:  DOMAIN#&lt;host&gt; -> activeDeploymentId, artifactPrefix   <span class="ac">(truth)</span>
+  3. CloudFront KVS: PutKey(host, artifactPrefix)                     <span class="ac">(edge)</span>
+  4. <b>no invalidation needed</b> - the prefix changed, so cache keys changed</code></pre>
+  <p>Step 4 is the payoff of immutability. Because artifacts live at unique paths and are never overwritten, there is never a cache invalidation. Rollback is instant and free. If step 3 fails after step 2 the edge is stale — the sweeper reconciles it via <code>kvsSyncedAt</code>, and stating that is better than pretending the two writes are atomic.</p>
+
+  <h3>State machine</h3>
+  <div class="sm">
+    <span class="st">QUEUED</span><span class="arw">→</span>
+    <span class="st run">PROVISIONING</span><span class="arw">→</span>
+    <span class="st run">BUILDING</span><span class="arw">→</span>
+    <span class="st run">UPLOADING</span><span class="arw">→</span>
+    <span class="st ok">DEPLOYED</span>
+  </div>
+  <div class="sm">
+    <span class="arw">any non-terminal →</span><span class="st bad">FAILED</span>
+    <span class="arw" style="margin-left:12px">QUEUED / PROVISIONING →</span><span class="st bad">CANCELLED</span>
+  </div>
+  <p><code>PROVISIONING</code> is a real state, not bookkeeping: Fargate cold start is 30–60 seconds, and without it the UI shows “queued” while the user watches nothing happen for a minute.</p>
+  <div class="tw"><table>
+    <thead><tr><th>From</th><th>To</th><th>Written by</th><th>Guard</th></tr></thead>
+    <tbody>
+      <tr><td>—</td><td>QUEUED</td><td>API Lambda</td><td><code>attribute_not_exists(PK)</code></td></tr>
+      <tr><td>QUEUED</td><td>PROVISIONING</td><td>Dispatcher</td><td><code>status = QUEUED</code> — <strong>the claim</strong></td></tr>
+      <tr><td>PROVISIONING</td><td>BUILDING</td><td>Container, via status API</td><td><code>status = PROVISIONING</code></td></tr>
+      <tr><td>BUILDING</td><td>UPLOADING</td><td>Container, via status API</td><td><code>status = BUILDING</code></td></tr>
+      <tr><td>UPLOADING</td><td>DEPLOYED</td><td>Container, via status API</td><td><code>status = UPLOADING</code></td></tr>
+      <tr><td>any non-terminal</td><td>FAILED</td><td>Container / Reconciler / Sweeper</td><td><code>status IN (...)</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><p><strong>Idempotency in one sentence:</strong> the <code>QUEUED → PROVISIONING</code> conditional update <em>is</em> the claim, and DynamoDB guarantees exactly one writer wins it. The claim happens in the dispatcher, <em>before</em> <code>RunTask</code> — claiming inside the container would be too late, because two containers would already be running.</p></div>
+
+  <h3>Networking</h3>
+  <p>Build tasks run in a <strong>public subnet</strong> with a public IP and a zero-inbound security group; gateway VPC endpoints for S3 and DynamoDB (free). No NAT Gateway, no interface endpoints.</p>
+  <p>A public IP with no inbound rules is not exposed — nothing can initiate a connection to it. The build subnet has no route to anything internal because <em>there is nothing internal</em>: the control plane is entirely serverless and reachable only over authenticated public APIs.</p>
+  <div class="fix">
+    <span class="tag">Honest limitation</span>
+    <p>Egress is unrestricted. Limiting it to npm and GitHub needs an egress proxy or AWS Network Firewall at roughly $300/month. The mitigation is that outbound access buys an attacker nothing, because the container holds no credential worth exfiltrating. This is recorded as an accepted risk rather than drawn as a control that doesn't exist.</p>
+  </div>
+</section>
+
+<hr>
+
+<section id="data">
+  <span class="h2num">02 · Data model</span>
+  <h2>Access patterns first</h2>
+  <p class="lede">Single table, on-demand, PITR on, encrypted with a customer-managed KMS key. Two queries shape the whole design: “list deployments for a project, newest first” and “find in-flight deployments past their deadline”.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Entity</th><th>PK</th><th>SK</th><th>GSI1</th><th>GSI2</th></tr></thead>
+    <tbody>
+      <tr><td>User</td><td><code>USER#&lt;id&gt;</code></td><td><code>PROFILE</code></td><td><code>EMAIL#&lt;email&gt;</code></td><td>—</td></tr>
+      <tr><td>Project</td><td><code>USER#&lt;id&gt;</code></td><td><code>PROJECT#&lt;id&gt;</code></td><td><code>PROJECT#&lt;id&gt;</code></td><td>—</td></tr>
+      <tr><td>Deployment</td><td><code>PROJECT#&lt;id&gt;</code></td><td><code>DEP#&lt;createdAt&gt;#&lt;id&gt;</code></td><td><code>DEP#&lt;id&gt;</code></td><td><code>INFLIGHT</code> / <code>deadlineAt</code></td></tr>
+      <tr><td>Domain</td><td><code>DOMAIN#&lt;host&gt;</code></td><td><code>META</code></td><td>—</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Three design points</h3>
+  <p><strong>Deployments live under their project.</strong> The sort key embeds an ISO timestamp, so <code>Query(PK, ScanIndexForward: false)</code> returns them newest-first with no sorting, no filtering, and no extra index. <code>LastEvaluatedKey</code> gives free cursor pagination.</p>
+  <p><strong>GSI1 provides lookup by opaque id.</strong> Entities are addressed by id from the API but stored under their parent for list queries; GSI1 bridges the two.</p>
+  <p><strong>GSI2 is a sparse in-flight index.</strong> <code>gsi2pk = "INFLIGHT"</code> is written only while a deployment is non-terminal and <code>REMOVE</code>d on every terminal transition. The index therefore holds only live builds — a handful of items. The sweeper queries it in time proportional to <em>stuck</em> deployments, not <em>all</em> deployments.</p>
+
+  <div class="fix">
+    <span class="tag">The likely bug</span>
+    <p>Every terminal transition must <code>REMOVE gsi2pk, gsi2sk</code>. Forgetting it in one code path leaks an item into the sparse index permanently, and the sweeper reprocesses it forever. This gets a dedicated unit test per transition.</p>
+  </div>
+
+  <h3>The critical write</h3>
+<pre><code>UpdateItem
+  Key: { PK: "PROJECT#prj_7f3a", SK: "DEP#...#dep_9c21" }
+  UpdateExpression:    SET #s = :provisioning, startedAt = :now, taskArn = :arn
+  ConditionExpression: <b>#s = :queued</b>          <span class="ac">&lt;- exactly one winner</span></code></pre>
+
+  <h3>Consistency</h3>
+  <ul>
+    <li>Authorization reads use <code>ConsistentRead: true</code>. A stale read there is a security bug.</li>
+    <li>Dashboard reads are eventually consistent. Half a second of staleness is fine.</li>
+    <li>GSI reads are <em>always</em> eventually consistent — the sweeper re-checks the base item with a consistent read before acting.</li>
+  </ul>
+  <p>Not stored here: build logs (CloudWatch, referenced by <code>logStreamName</code>), artifacts (S3, by <code>artifactPrefix</code>), secrets (Secrets Manager and SSM).</p>
+</section>
+
+<hr>
+
+<section id="api">
+  <span class="h2num">03 · API</span>
+  <h2>Contract</h2>
+
+  <h3>Sessions, not JWTs</h3>
+  <p>Opaque random tokens stored hashed in DynamoDB. Revocation actually works and there is no signing key to leak; at this scale the extra read costs nothing.</p>
+
+  <h3>The authorization rule</h3>
+  <div class="note"><p>Load the project with <code>ConsistentRead: true</code>, compare <code>ownerId</code> to the caller, and return <strong>404, not 403</strong>, on mismatch — so the API never confirms the existence of another user's resources. Enforced in one middleware, not per-handler.</p></div>
+
+  <h3>Triggering a deployment</h3>
+<pre><code>POST /projects/{projectId}/deployments
+{ "branch": "main", "commitSha": null, "idempotencyKey": "cli_2026-09-01_a1b2" }
+
+<b>202 Accepted</b>
+{ "deploymentId": "dep_9c21", "status": "QUEUED",
+  "hostname": "dep-9c21.example.com", "createdAt": "..." }</code></pre>
+  <p>If <code>commitSha</code> is null the API resolves the branch head through the GitHub App <em>before</em> creating the record, so the deployment is pinned to an immutable SHA rather than a moving branch.</p>
+  <p>The <code>idempotencyKey</code> is scoped to the project; a repeat within 24h returns the original <code>deploymentId</code>. This protects against double-clicks and client retries, which are far more common in practice than duplicate SQS deliveries.</p>
+
+  <div class="fix">
+    <span class="tag">Repository URL is not accepted here</span>
+    <p>It lives on the project, was validated at project creation, and is read server-side. Accepting it per-deployment would let a caller point an existing project at an arbitrary repository.</p>
+  </div>
+
+  <h3>Repository URL validation</h3>
+  <p>Parse with <code>new URL()</code>, never a regex, then assert <em>all</em> of: protocol is exactly <code>https:</code>; hostname is exactly <code>github.com</code> (allowlist, not suffix match — <code>github.com.evil.io</code> must fail); no <code>user:password@</code>; path matches <code>^/[\w.-]+/[\w.-]+(\.git)?$</code>; no <code>.</code> or <code>..</code> segments. Store parsed <code>owner</code> and <code>repo</code> as separate fields and never re-parse the raw string.</p>
+
+  <h3>Path security</h3>
+  <p>No endpoint accepts a path. The server derives every S3 key from IDs, so path traversal is prevented by construction rather than by filtering. Pagination cursors are HMAC-signed so clients cannot forge a key into another partition.</p>
+
+  <h3>Quotas</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Limit</th><th class="num">Value</th><th>Enforced by</th></tr></thead>
+    <tbody>
+      <tr><td>API requests</td><td class="num">20/s burst, 5/s</td><td>API Gateway throttling</td></tr>
+      <tr><td>Concurrent deployments per user</td><td class="num">2</td><td>DynamoDB conditional counter</td></tr>
+      <tr><td>Deployments per user per day</td><td class="num">50</td><td>DynamoDB counter with TTL reset</td></tr>
+      <tr><td>Projects per user</td><td class="num">10</td><td>Count check on create</td></tr>
+    </tbody>
+  </table></div>
+  <p>The concurrency cap is not a politeness feature. It is the primary bound on how fast a malicious repository can burn AWS credits.</p>
+</section>
+
+<hr>
+
+<section id="build">
+  <span class="h2num">04 · Build contract</span>
+  <h2>The untrusted interface</h2>
+
+  <h3>What the container must NOT have</h3>
+  <p>This list <em>is</em> the security design. It is worth more than the diagram.</p>
+  <ul>
+    <li>No GitHub token, SSH key, or any GitHub credential</li>
+    <li>No DynamoDB, SQS, Secrets Manager or SSM permissions of any kind</li>
+    <li>No <code>s3:GetObject</code> on the artifact bucket — write-only, own prefix only</li>
+    <li>No <code>s3:DeleteObject</code> anywhere</li>
+    <li>No production database, cache, or internal service to reach — none exist</li>
+  </ul>
+  <p>The complete task role, in full:</p>
+<pre><code>s3:PutObject      -> arn:aws:s3:::platform-artifacts-prod/${ARTIFACT_PREFIX}*
+logs:PutLogEvents -> the deployment's own log stream
+<span class="hz">(nothing else)</span></code></pre>
+  <p><code>ARTIFACT_PREFIX</code> is server-generated and never client-influenced. The container cannot write outside its own prefix even if fully compromised — which is what makes “immutable artifacts” actually true rather than aspirational.</p>
+
+  <h3>Extraction safety</h3>
+  <div class="fix">
+    <span class="tag">Zip-slip — commonly missed</span>
+    <p>Reject any entry whose normalised path escapes the destination. Reject symlinks and hardlinks pointing outside the root. Enforce the decompressed-size cap <em>while streaming</em>, not after — a 1&nbsp;MB tarball can expand to 100&nbsp;GB. Enforce a file-count cap during extraction.</p>
+  </div>
+
+  <h3>Build execution</h3>
+  <p>Lifecycle scripts <strong>run</strong>. That is the entire point of the platform, and it is why the container is disposable. Adding <code>--ignore-scripts</code> would break most real projects and be security theatre, since <code>npm run build</code> executes arbitrary code seconds later regardless.</p>
+  <ul>
+    <li>Runs as a non-root user inside the container.</li>
+    <li><code>NODE_OPTIONS=--max-old-space-size</code> set <em>below</em> the task memory limit, so Node throws a catchable heap error before the kernel OOM-kills the task and destroys the logs.</li>
+    <li>No <code>shell: true</code>, no interpolation of user-controlled values. Build commands come from a fixed table keyed by detected framework — never from <code>package.json</code>.</li>
+  </ul>
+
+  <h3>Exit codes</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">Code</th><th>Meaning</th><th>Reported as</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td>Success</td><td><code>DEPLOYED</code></td></tr>
+      <tr><td class="num">10</td><td>Source fetch or extract failed</td><td><code>SOURCE_ERROR</code></td></tr>
+      <tr><td class="num">11</td><td>Unsupported framework</td><td><code>UNSUPPORTED_FRAMEWORK</code></td></tr>
+      <tr><td class="num">12</td><td>Dependency install failed</td><td><code>INSTALL_FAILED</code></td></tr>
+      <tr><td class="num">13</td><td>Build command failed</td><td><code>BUILD_FAILED</code></td></tr>
+      <tr><td class="num">14</td><td>Output directory missing or empty</td><td><code>NO_OUTPUT</code></td></tr>
+      <tr><td class="num">15</td><td>Artifact exceeds limits</td><td><code>ARTIFACT_TOO_LARGE</code></td></tr>
+      <tr><td class="num">17</td><td>Watchdog timeout</td><td><code>TIMEOUT</code></td></tr>
+      <tr><td class="num">137</td><td>SIGKILL — almost always OOM</td><td><code>OUT_OF_MEMORY</code> <span class="crit">(set by reconciler)</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><p>Exit code 137 cannot be reported by the container, because the container is already dead. The reconciler reads it from the ECS task state-change event. <strong>This is precisely why the reconciler exists.</strong></p></div>
+
+  <h3>Limits</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Limit</th><th class="num">Value</th><th>Enforced where</th></tr></thead>
+    <tbody>
+      <tr><td>Task CPU / memory</td><td class="num">1 vCPU / 2 GB</td><td>Task definition</td></tr>
+      <tr><td>Ephemeral storage</td><td class="num">21 GB</td><td>Task definition — 20 GB is Fargate's floor</td></tr>
+      <tr><td>Source tarball</td><td class="num">100 MB</td><td>Source fetcher, <em>before</em> dispatch</td></tr>
+      <tr><td>Extracted source</td><td class="num">500 MB</td><td>Streaming check during extraction</td></tr>
+      <tr><td>Build wall clock</td><td class="num">10 min</td><td>Watchdog <strong>+</strong> external <code>StopTask</code></td></tr>
+      <tr><td>Artifact size / files</td><td class="num">500 MB / 20k</td><td>Before upload</td></tr>
+      <tr><td>Log volume</td><td class="num">10 MB</td><td>Container</td></tr>
+    </tbody>
+  </table></div>
+  <p>Two independent timeout mechanisms are required. The watchdog handles a slow build; the external <code>StopTask</code> handles a wedged one that cannot kill itself. Relying on either alone leaves a case where a task runs until something else notices — which on Fargate means “until you notice the bill”.</p>
+
+  <h3>Artifact upload</h3>
+  <p>Bounded concurrency — 8 parallel <code>PutObject</code> calls — not one-by-one, and not unbounded. Streaming, never buffering whole files. <code>Content-Type</code> set from extension; getting it wrong means the browser downloads your HTML instead of rendering it. Fingerprinted assets get <code>max-age=31536000, immutable</code>; HTML gets <code>max-age=0, must-revalidate</code>.</p>
+  <p>Logs are one JSON object per line, capped at 8&nbsp;KB per line and 10&nbsp;MB per build, with <code>STATUS_TOKEN</code> and <code>SOURCE_URL</code> redacted — build tools print their environment more often than you'd expect.</p>
+</section>
+
+<hr>
+
+<section id="threat">
+  <span class="h2num">05 · Threat model</span>
+  <h2>Assume every build is a compromise</h2>
+  <p class="lede">The premise of the whole system is that we execute code written by people we do not trust. Design rule: assume every build is a successful attacker, then ensure the blast radius is one disposable sandbox.</p>
+
+  <h3>Assets, ranked</h3>
+  <ol>
+    <li>The AWS account</li>
+    <li>The GitHub App private key — grants read on every installed repository</li>
+    <li>Other users' artifacts and deployment metadata</li>
+    <li><strong>The credit balance</strong> — finite and exhaustible, uniquely relevant here</li>
+    <li>Platform availability</li>
+  </ol>
+
+  <h3>Selected threats</h3>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Threat</th><th>Control</th><th>Residual</th></tr></thead>
+    <tbody>
+      <tr><td>T2</td><td>Steal GitHub credentials from the container</td><td>Container never receives one; source arrives as a presigned URL</td><td>Negligible</td></tr>
+      <tr><td>T3</td><td>Steal AWS credentials via task metadata</td><td>Task role grants only <code>s3:PutObject</code> to one prefix and <code>logs:PutLogEvents</code></td><td>Negligible</td></tr>
+      <tr><td>T4</td><td>Write into another deployment's artifacts</td><td>Prefix is server-generated; IAM is prefix-scoped</td><td>None if IAM correct — <strong>must be tested</strong></td></tr>
+      <tr><td>T5</td><td>Read another user's artifacts</td><td>Bucket private, OAC only; no <code>GetObject</code> in task role</td><td>IDs must be 128-bit random, not sequential</td></tr>
+      <tr><td>T7</td><td>Zip-slip during extraction</td><td>Normalise and validate every entry; reject escaping symlinks</td><td><span class="crit">Needs a regression test</span></td></tr>
+      <tr><td>T8</td><td>Credit exhaustion — miner in <code>postinstall</code></td><td>10-min timeout ×2, 2 concurrent builds, 50/day, Budgets alarms</td><td>Bounded: ~$2/day/user</td></tr>
+      <tr><td>T12</td><td>SSRF via repository URL</td><td>Strict allowlist, parsed with <code>URL</code> not regex</td><td>None</td></tr>
+      <tr><td>T14</td><td>Status callback forgery</td><td>Per-deployment 256-bit token, stored hashed, expires at deadline</td><td>Only forges their own build</td></tr>
+      <tr><td>T15</td><td>Command injection via branch name</td><td>Never interpolated into a shell; validated against <code>^[\w./-]+$</code></td><td>None</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Accepted risks</h3>
+  <p>Stating these plainly is stronger than pretending they're solved.</p>
+  <ol>
+    <li><strong>Unrestricted egress from the build container.</strong> Needs a proxy or Network Firewall (~$300/mo). Mitigated by there being nothing worth exfiltrating.</li>
+    <li><strong>No container-escape defence beyond Fargate's own isolation.</strong></li>
+    <li><strong>No dependency scanning.</strong> A malicious npm package gets the same nothing a malicious repo gets.</li>
+    <li><strong>No WAF on the API.</strong> ~$8/mo, deferred; API Gateway throttling is the interim control.</li>
+  </ol>
+
+  <div class="fix">
+    <span class="tag">The credibility item</span>
+    <p>Seven security tests belong in CI as <em>executable tests</em>, not as a checklist — a fixture repo that probes for AWS credentials, one that writes outside its prefix, a crafted zip-slip tarball, an infinite loop, a cross-user access attempt, three malicious URLs, and an injected branch name.</p>
+    <p>This is what separates documented security from implemented security, and it is the single highest-value credibility item in the project. Each test must also <strong>demonstrably fail when its control is removed</strong> — a test that has never failed is not a test.</p>
+  </div>
+</section>
+
+<hr>
+
+<section id="cost">
+  <span class="h2num">06 · Cost</span>
+  <h2>Tier what runs, not what's built</h2>
+  <p class="lede">$100 in credits is not $100/month. It's a finite, expiring pool — roughly $16–25/month sustainable across a 4–6 month build. The strategy isn't to spend freely; it's to separate what runs continuously from what only needs to be proven.</p>
+
+  <h3>Tier A — always on</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Service</th><th>Configuration</th><th class="num">Monthly</th></tr></thead>
+    <tbody>
+      <tr><td>Route 53</td><td>1 hosted zone</td><td class="num">$0.50</td></tr>
+      <tr><td>DynamoDB</td><td>On-demand, PITR</td><td class="num">$0.30</td></tr>
+      <tr><td>S3</td><td>~5 GB artifacts + sources</td><td class="num">$0.15</td></tr>
+      <tr><td>Lambda · SQS · CloudFront</td><td>Inside always-free tiers</td><td class="num">$0.00</td></tr>
+      <tr><td>API Gateway</td><td>~50k requests</td><td class="num">$0.05</td></tr>
+      <tr><td>ECR</td><td>~1 GB image storage</td><td class="num">$0.10</td></tr>
+      <tr><td>Secrets Manager</td><td>1 secret — GitHub App key</td><td class="num">$0.40</td></tr>
+      <tr><td>KMS</td><td>1 customer-managed key</td><td class="num">$1.00</td></tr>
+      <tr><td>VPC gateway endpoints</td><td>S3 + DynamoDB</td><td class="num">$0.00</td></tr>
+      <tr><td><strong>Total</strong></td><td></td><td class="num"><strong>~$2.50</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p>Deliberately absent: NAT Gateway ($32), interface endpoints ($7.20 each), WAF ($8), ALB ($16). Each has a cheaper substitute at this scale.</p>
+
+  <h3>Marginal cost per build</h3>
+<pre><code>CPU     1.0 vCPU x 0.05 h x $0.04048  = $0.00202
+Memory  2.0 GB   x 0.05 h x $0.004445 = $0.00044
+S3 PUTs ~200 objects x $0.000005      = $0.00100
+                                      ----------
+                                       <b>~$0.0035 per build</b>   <span class="ac">~285 builds per dollar</span></code></pre>
+  <p>Development at ~200 builds/month costs about $0.70. Compute is not the risk here. Always-on infrastructure is.</p>
+
+  <h3>Tier B — stand up, evidence, destroy</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Item</th><th class="num">Per month</th><th class="num">Per day</th><th>Window</th></tr></thead>
+    <tbody>
+      <tr><td>NAT Gateway + private subnets</td><td class="num">$32.00</td><td class="num">$1.07</td><td>3 days = $3.20</td></tr>
+      <tr><td>Interface endpoints ×3</td><td class="num">$21.60</td><td class="num">$0.72</td><td>same 3 days = $2.16</td></tr>
+      <tr><td>WAF + 3 rules</td><td class="num">$8.00</td><td class="num">$0.27</td><td>5 days = $1.35</td></tr>
+      <tr><td>GuardDuty</td><td class="num">$5.00</td><td class="num">$0.17</td><td><strong>30-day trial = $0.00</strong></td></tr>
+      <tr><td><strong>Full demonstration</strong></td><td class="num"></td><td class="num"></td><td><strong>~$7 total</strong></td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><p>Seven dollars buys the private-subnet, NAT, endpoint-hardened, WAF-protected, threat-detected version of the architecture — fully working, with screenshots and flow logs to show for it. Then it comes down. <strong>The Terraform is the proof of competence; it does not have to keep running.</strong> That's a better answer to “have you built a production VPC?” than burning a third of the credits on idle infrastructure.</p></div>
+
+  <h3>What would actually blow the budget</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Risk</th><th class="num">Cost unchecked</th><th>Guardrail</th></tr></thead>
+    <tbody>
+      <tr><td>Forgetting to destroy Tier B</td><td class="num">$32–60/mo</td><td>Calendar reminder + budget alarm</td></tr>
+      <tr><td>Crypto miner in <code>postinstall</code></td><td class="num">$0.07/build</td><td>Timeout ×2, concurrency 2, 50/day</td></tr>
+      <tr><td>Log retention left at “never expire”</td><td class="num">grows forever</td><td>7-day retention set in Terraform</td></tr>
+      <tr><td>Artifacts never expiring</td><td class="num">grows forever</td><td>Lifecycle rule, 30 days</td></tr>
+      <tr><td>DynamoDB provisioned not on-demand</td><td class="num">$14/mo idle</td><td>On-demand in Terraform</td></tr>
+    </tbody>
+  </table></div>
+  <p>Set up in week one, before application code: AWS Budgets at $25/$50/$80/$95, a billing alarm, Cost Anomaly Detection, cost-allocation tags enforced in Terraform, MFA on root, and a weekly five-minute Cost Explorer check. The most common way a credit pool dies is nobody looking at it for three weeks.</p>
+</section>
+
+<hr>
+
+<section id="roadmap">
+  <span class="h2num">07 · Roadmap</span>
+  <h2>Build by risk, not by layer</h2>
+
+  <div class="fix">
+    <span class="tag">Correction to the original build order</span>
+    <p>The original plan started with “Step 1: create the React dashboard.” That is backwards, and it's the most common way projects like this die.</p>
+    <p>The dashboard is the part you already know how to build. The parts that can actually defeat you are: does the Fargate task launch and report correctly, does the IAM scoping really hold, does CloudFront actually rewrite a host into an S3 prefix. Build the dashboard first and you get three weeks of visible progress followed by discovering the hard part doesn't work. Build the build plane first and you find out on day four, when changing course is cheap.</p>
+  </div>
+  <p><strong>Rule: nothing gets a UI until it works from the command line.</strong></p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Milestone</th><th>Exit criterion</th><th class="num">Days</th></tr></thead>
+    <tbody>
+      <tr><td>M0 · Guardrails</td><td>Terraform works against remote state; a $25 budget alert exists</td><td class="num">0.5</td></tr>
+      <tr><td>M1 · Container, no AWS</td><td><code>docker run builder fixture.tar.gz</code> produces a correct <code>dist/</code>; a failing fixture exits 13</td><td class="num">2–3</td></tr>
+      <tr><td>M2 · Artifacts + delivery</td><td>A hand-uploaded build serves over HTTPS; <code>/about/</code> resolves; unknown paths return 200; bucket fully private</td><td class="num">3–4</td></tr>
+      <tr><td>M3 · State + API</td><td><code>POST</code> returns 202; invalid transitions rejected; two concurrent claims produce exactly one winner</td><td class="num">3–4</td></tr>
+      <tr><td>M4 · Wiring the build plane</td><td><span class="crit">A real repo becomes a live URL in under 3 minutes, no manual steps.</span> The moment the project exists.</td><td class="num">4–5</td></tr>
+      <tr><td>M5 · Security hardening</td><td>All seven security tests pass <em>and demonstrably fail when their control is removed</em></td><td class="num">3–4</td></tr>
+      <tr><td>M6 · Auth + dashboard</td><td>A second account can deploy and cannot see the first's projects — verified by test, not by clicking</td><td class="num">5–7</td></tr>
+      <tr><td>M7 · Operations</td><td>A PR shows a Terraform plan; merging deploys; a forced failure fires an alarm</td><td class="num">2–3</td></tr>
+      <tr><td>M8 · Tier B demo</td><td>Evidence committed to <code>docs/evidence/</code>; Cost Explorer confirms teardown</td><td class="num">2–3</td></tr>
+      <tr><td>M9 · Polish</td><td>Architecture diagram, README, and a 60-second demo video</td><td class="num">—</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>8–11 weeks part-time.</strong> M4 is the milestone that slips; budget more than you think for the first <code>RunTask</code> that actually works end to end.</p>
+
+  <h3>Sequencing rules</h3>
+  <ol>
+    <li><strong>Terraform from M0.</strong> Retrofitting IaC onto click-ops costs more than writing it first, every time.</li>
+    <li><strong>One vertical slice before any breadth.</strong> One repo, one framework, one user, one domain.</li>
+    <li><strong>The UI is last.</strong> Everything through M5 is exercised with <code>curl</code>.</li>
+    <li><strong>Security is M5, not “later”.</strong> Later does not arrive, and the security story is the most valuable thing this project says about you.</li>
+    <li><strong>Write the ADR when you make the decision.</strong> The reasoning is gone within a week.</li>
+  </ol>
+  <p>M9's video matters more than one more feature — most people reviewing this will watch 60 seconds and never run it.</p>
+</section>
+
+<hr>
+
+<section id="testing">
+  <span class="h2num">08 · Testing</span>
+  <h2>Testing an async distributed system</h2>
+  <p class="lede">Genuinely harder than testing a CRUD app, and “I'll check CloudWatch” is not a strategy. Decide this before writing code.</p>
+
+  <div class="fix">
+    <span class="tag">Know this before you rely on LocalStack</span>
+    <p>LocalStack Community does <strong>not</strong> support ECS/Fargate, CloudFront, CloudFront Functions, or KeyValueStore — all Pro-only. It covers the control plane and nothing else.</p>
+    <p>And it does not enforce IAM. Every policy in this project will appear to work locally regardless of whether it is correct. <strong>All IAM assertions must run against real AWS.</strong></p>
+  </div>
+
+  <h3>The test worth writing first</h3>
+<pre><code>test: duplicate SQS delivery launches exactly one task
+  - seed a QUEUED deployment in LocalStack DynamoDB
+  - invoke the dispatcher twice concurrently with the same deploymentId
+  - assert: <b>RunTask called once</b>; final status PROVISIONING;
+            the losing invocation returned cleanly without throwing</code></pre>
+  <p>That single test is the strongest evidence for the idempotency claim, and it runs in milliseconds.</p>
+
+  <h3>The hardest things to test</h3>
+  <p>The reconciler and sweeper exist for failures that are hard to cause on purpose. Cause them directly rather than waiting.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Path</th><th>How to trigger it deliberately</th></tr></thead>
+    <tbody>
+      <tr><td>Reconciler on OOM</td><td>Fixture that allocates past the memory limit; assert <code>OUT_OF_MEMORY</code> from exit 137</td></tr>
+      <tr><td>Reconciler on external kill</td><td><code>aws ecs stop-task</code> mid-build; assert it doesn't stay <code>BUILDING</code></td></tr>
+      <tr><td>Sweeper</td><td>Insert a deployment with <code>deadlineAt</code> in the past; invoke; assert <code>FAILED</code></td></tr>
+      <tr><td>KVS drift</td><td>Write DynamoDB without writing KVS; assert the sweeper repairs it</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><p>The specific bug to guard against is <strong>a deployment stuck non-terminal forever</strong>. It's the most likely real-world failure and the least likely to be noticed, because nothing errors — the UI just spins. Add a nightly assertion that no deployment has been non-terminal for over an hour.</p></div>
+
+  <h3>On <code>tsc</code> vs esbuild</h3>
+  <p>The original document was unclear here. Use <strong>both</strong>, for different jobs: <code>tsc --noEmit</code> for typechecking, <code>esbuild</code> for bundling Lambda handlers. They aren't alternatives — esbuild strips types without checking them, and <code>tsc</code> is slow at emitting. Not a controversial choice, just the standard split.</p>
+
+  <h3>Not tested, deliberately</h3>
+  <p>CloudFront caching behaviour (it's AWS's code), React component internals, Terraform beyond <code>validate</code> and <code>plan</code>, and load/performance — there is no load, and saying so is better than a meaningless k6 run.</p>
+</section>
+
+<hr>
+
+<section id="adr">
+  <span class="h2num">Decisions</span>
+  <h2>Architecture decision records</h2>
+  <p class="lede">Written at the moment the decision is made, not retrospectively. “Alternatives considered” is the section that carries the weight — an ADR without it is just a note.</p>
+
+  <div class="adrs">
+    <div class="adr"><span class="id">ADR-0002</span><b>Split the system into a control plane and a build plane</b>
+      <p>One boundary, everything arranged around it. Assume every build is a successful compromise and make that survivable.</p>
+      <p class="alt">Rejected: building on the API host (RCE as a feature); Lambda (15-min ceiling, reused execution environments); long-lived EC2 workers (state leaks between builds); CodeBuild (solves isolation, but buying it defeats the point of demonstrating it).</p>
+    </div>
+    <div class="adr"><span class="id">ADR-0003</span><b>SQS dispatcher plus EventBridge reconciler</b>
+      <p>Fills the empty “orchestrator” box. Dispatcher claims and launches without waiting; reconciler catches tasks that die without reporting; sweeper catches tasks that vanish silently.</p>
+      <p class="alt">Rejected: Step Functions <code>runTask.sync</code> — genuinely good and would remove the reconciler entirely, but <code>.sync</code> hides exactly the problem worth demonstrating. Reconsider later; the cost is pennies.</p>
+    </div>
+    <div class="adr"><span class="id">ADR-0004</span><b>The control plane fetches source; the container gets no GitHub token</b>
+      <p>Trusted side pulls the tarball with a GitHub App installation token and hands over a 15-minute presigned S3 URL. Size cap enforced before any container starts.</p>
+      <p class="alt">Rejected: a short-lived token in the container — “short-lived” means an hour, exfiltration takes a millisecond.</p>
+    </div>
+    <div class="adr"><span class="id">ADR-0005</span><b>Edge routing via CloudFront Function and KeyValueStore</b>
+      <p>Sub-millisecond host-to-prefix rewrite with no origin round-trip. Rollback is a <code>PutKey</code>, and immutable prefixes mean no cache invalidation ever.</p>
+      <p class="alt">Rejected: Lambda@Edge with a DynamoDB lookup — one source of truth, but 30–80ms on <em>every asset request</em>. Wrong tool for a hot path this simple.</p>
+    </div>
+    <div class="adr"><span class="id">ADR-0006</span><b>Static output only in the MVP</b>
+      <p>Keeps the security model coherent: untrusted code runs only during a bounded build, never as a long-lived request handler.</p>
+      <p class="alt">Rejected: silently accepting Next.js and deploying <code>.next/static</code> — produces a broken site and a confusing failure, the worst of the three outcomes.</p>
+    </div>
+    <div class="adr"><span class="id">ADR-0007</span><b>Public subnet, no NAT Gateway</b>
+      <p>$0/month instead of $32. Zero inbound rules; free gateway endpoints for S3 and DynamoDB. The private topology lives behind a Terraform flag and is demonstrated temporarily.</p>
+      <p class="alt">Rejected: interface endpoints without NAT (~$29/mo — worse than the NAT it replaces, and npm is still unreachable); a NAT instance (single point of failure that teaches nothing this project needs).</p>
+    </div>
+    <div class="adr"><span class="id">ADR-0008</span><b>Single-table DynamoDB with a sparse in-flight index</b>
+      <p>Every access pattern is a <code>GetItem</code> or <code>Query</code>. No <code>Scan</code> anywhere. The sweeper stays cheap forever regardless of history size.</p>
+      <p class="alt">Rejected: a scheduled table scan — simpler to write, unbounded in cost, and misses the chance to show that sparse indexes exist.</p>
+    </div>
+    <div class="adr"><span class="id">ADR-0009</span><b>The container reports status through a scoped API, not DynamoDB</b>
+      <p>Granting the untrusted plane <code>dynamodb:UpdateItem</code> — even with <code>LeadingKeys</code> — scopes to the <em>project</em> partition, so a compromised build could mark another deployment <code>DEPLOYED</code> or repoint its artifact prefix. Instead: a per-deployment 256-bit token, stored hashed, expiring at the deadline.</p>
+      <p class="alt">Result: the untrusted plane has zero write access to control-plane state, and the trust boundary becomes trivial to describe — worth more than the code it costs.</p>
+    </div>
+  </div>
+</section>
+
+<p class="foot">
+  Full markdown source lives in <code>docs/</code> alongside the code — <code>00-scope.md</code> through <code>08-testing.md</code> and <code>docs/adr/</code>. This page is a rendering of that set; the markdown remains the source of truth.
+</p>
+
+</main>
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.rail a'));
+  var map = {};
+  links.forEach(function(a){
+    var el = document.querySelector(a.getAttribute('href'));
+    if (el) map[el.id] = a;
+  });
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting){
+        links.forEach(function(l){ l.classList.remove('on'); });
+        if (map[e.target.id]) map[e.target.id].classList.add('on');
+      }
+    });
+  }, { rootMargin: '-10% 0px -70% 0px', threshold: 0 });
+  Object.keys(map).forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) obs.observe(el);
+  });
+
+  var tg = document.getElementById('tg'), nv = document.getElementById('nv');
+  function narrow(){ return window.matchMedia('(max-width:900px)').matches; }
+  function sync(){
+    if (narrow()){ nv.hidden = true; tg.setAttribute('aria-expanded','false'); }
+    else { nv.hidden = false; }
+  }
+  sync();
+  window.addEventListener('resize', sync);
+  tg.addEventListener('click', function(){
+    var open = !nv.hidden;
+    nv.hidden = open;
+    tg.setAttribute('aria-expanded', String(!open));
+  });
+  nv.addEventListener('click', function(e){
+    if (e.target.tagName === 'A' && narrow()){
+      nv.hidden = true; tg.setAttribute('aria-expanded','false');
+    }
+  });
+})();
+</script>

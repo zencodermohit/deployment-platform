@@ -1,0 +1,13 @@
+# Normalise line endings. Without this, Windows checkouts commit CRLF and shell
+# scripts break when they run in Git Bash or inside the Linux build container.
+* text=auto eol=lf
+
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.ps1       text eol=crlf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+*.tar.gz binary

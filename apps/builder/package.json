@@ -1,0 +1,15 @@
+{
+  "name": "@platform/builder",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "builder": "./dist/builder.mjs"
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "tar": "^7.4.3"
+  }
+}

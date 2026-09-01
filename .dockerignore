@@ -1,0 +1,19 @@
+*
+!package.json
+!package-lock.json
+!tsconfig.json
+!packages
+!apps
+!scripts
+
+# Re-exclude things that would otherwise slip in via the allowlist above
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+.work
+.out
+tests
+docs
+infra
+.git
+.github

@@ -1,0 +1,30 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Builder runtime directories
+.work/
+.out/
+
+# Generated test fixtures (rebuild with: npm run fixtures)
+tests/fixtures/tarballs/
+tests/fixtures/src/
+
+# Terraform (M0+)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+
+# Local environment
+.env
+.env.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

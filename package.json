@@ -1,0 +1,31 @@
+{
+  "name": "deployment-platform",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "fixtures": "node scripts/make-fixtures.mjs",
+    "build": "node apps/builder/build.mjs",
+    "builder": "node apps/builder/dist/builder.mjs",
+    "doctor": "node apps/builder/dist/builder.mjs doctor",
+    "docker:build": "docker build -f docker/builder/Dockerfile -t deploy-builder:dev .",
+    "docker:doctor": "docker run --rm deploy-builder:dev doctor"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
