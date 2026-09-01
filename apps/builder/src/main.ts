@@ -22,6 +22,7 @@ import {
 } from '@platform/core';
 import { killActiveChild } from './exec.js';
 import { runDoctor } from './health.js';
+import { createReporter, type Reporter } from './reporter.js';
 import { fetchSource } from './phases/fetch.js';
 import { extractSource } from './phases/extract.js';
 import { inspectProject } from './phases/inspect.js';
@@ -83,6 +84,7 @@ async function runPipeline(sourceArg: string | undefined): Promise<number> {
     maxTotalBytes: cfg.maxLogBytes,
   });
 
+  const reporter: Reporter = createReporter(cfg, log);
   const deadline = startedAt + cfg.buildTimeoutSec * 1000;
   const remaining = (): number => Math.max(1_000, deadline - Date.now());
 
@@ -107,6 +109,10 @@ async function runPipeline(sourceArg: string | undefined): Promise<number> {
     const { rootDir } = await extractSource(archivePath, cfg, log.phase('fetch'));
     const { framework, hasLockfile } = await inspectProject(rootDir, log.phase('inspect'));
 
+    // PROVISIONING -> BUILDING. Reported once the source is known-good, so a
+    // deployment that fails on a bad archive never claims to have built.
+    await reporter.report({ status: 'BUILDING', phase: 'install', framework: framework.id });
+
     if (framework.needsInstall) {
       await installDependencies(rootDir, hasLockfile, cfg, log.phase('install'), remaining());
     }
@@ -114,7 +120,24 @@ async function runPipeline(sourceArg: string | undefined): Promise<number> {
     await runBuild(rootDir, framework, cfg, log.phase('build'), remaining());
 
     const collected = await collectArtifacts(rootDir, framework, cfg, log.phase('collect'));
+
+    await reporter.report({
+      status: 'UPLOADING',
+      phase: 'upload',
+      framework: framework.id,
+      fileCount: collected.files.length,
+      artifactBytes: collected.totalBytes,
+    });
+
     const published = await publishArtifacts(collected, cfg, log.phase('publish'));
+
+    await reporter.report({
+      status: 'DEPLOYED',
+      phase: 'done',
+      framework: framework.id,
+      fileCount: published.fileCount,
+      artifactBytes: published.totalBytes,
+    });
 
     clearTimeout(watchdog);
     emitResult(log, cfg, 'DEPLOYED', EXIT.OK, startedAt, {
@@ -130,6 +153,14 @@ async function runPipeline(sourceArg: string | undefined): Promise<number> {
 
     const err: BuildError = toBuildError(e);
     log.phase('failed').error(err.message, { code: err.code, ...err.detail });
+
+    // Best-effort: if this cannot be delivered, the reconciler notices the task
+    // stopped without a terminal state and fails the deployment itself.
+    await reporter.report({
+      status: 'FAILED',
+      error: { code: err.code, message: err.message, exitCode: err.exitCode },
+    });
+
     emitResult(log, cfg, 'FAILED', err.exitCode, startedAt, {
       code: err.code,
       userFault: err.isUserFault,

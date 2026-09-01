@@ -8,7 +8,7 @@ import {
   isBuildError,
   loadConfig,
   Logger,
-  type BuilderConfig,
+  type LocalConfig,
 } from '@platform/core';
 import { collectArtifacts } from '../../apps/builder/src/phases/collect.js';
 import { mapWithConcurrency } from '../../apps/builder/src/phases/publish.js';
@@ -18,11 +18,10 @@ function silent(): Logger {
   return new Logger({ deploymentId: 'test', write: () => {} });
 }
 
-function config(overrides: Partial<BuilderConfig> = {}): BuilderConfig {
-  return {
-    ...loadConfig({ BUILDER_MODE: 'local', OUTPUT_DIR: '/out', SOURCE_PATH: '/x.tar.gz' }),
-    ...overrides,
-  };
+function config(overrides: Partial<LocalConfig> = {}): LocalConfig {
+  const base = loadConfig({ BUILDER_MODE: 'local', OUTPUT_DIR: '/out', SOURCE_PATH: '/x.tar.gz' });
+  if (base.mode !== 'local') throw new Error('expected a local config');
+  return { ...base, ...overrides };
 }
 
 async function makeRepo(dir: string, files: Record<string, string>): Promise<void> {

@@ -1,28 +1,30 @@
 /**
- * Environment configuration, parsed and validated once at startup.
+ * Builder configuration, parsed and validated once at startup.
  *
- * Deliberately hand-rolled rather than using Zod: this is a small fixed set of
- * variables we control, and every dependency added here ends up inside the
- * container that runs untrusted code. Zod arrives at the API layer (M3), where
+ * Two modes:
+ *
+ *   local  reads a tarball from disk, writes artifacts to a directory.
+ *          The M1 development loop; no AWS involved.
+ *
+ *   aws    downloads from a presigned URL, uploads to S3, reports progress to
+ *          the control plane. What Fargate actually runs.
+ *
+ * A discriminated union rather than a bag of optionals, so a field that only
+ * exists in one mode cannot be read in the other without the compiler noticing.
+ *
+ * Deliberately hand-rolled rather than using Zod: every dependency here ends up
+ * inside the container that runs untrusted code. Zod lives in the API, where
  * request bodies are attacker-controlled and genuinely complex.
- *
- * M1 implements `local` mode only. `aws` mode slots in at the marked seam.
  */
 
 import { BuildError } from './errors.js';
 import { generateDeploymentId } from './ids.js';
 
-export type BuilderMode = 'local';
+export type BuilderMode = 'local' | 'aws';
 
-export interface BuilderConfig {
-  mode: BuilderMode;
+interface CommonConfig {
   deploymentId: string;
-
-  /** Path to the source tarball. In AWS mode this becomes a presigned URL. */
-  sourcePath: string;
-  /** Where finished artifacts are written. In AWS mode this becomes bucket + prefix. */
-  outputDir: string;
-  /** Scratch space. Wiped on start; must be writable. */
+  /** Scratch space. Emptied on start; must be writable. */
   workDir: string;
 
   buildTimeoutSec: number;
@@ -36,9 +38,29 @@ export interface BuilderConfig {
   maxLogBytes: number;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 
-  /** Values scrubbed from every log line. Empty in local mode; populated in AWS mode. */
+  /** Values scrubbed from every log line before it is written. */
   secrets: string[];
 }
+
+export interface LocalConfig extends CommonConfig {
+  mode: 'local';
+  sourcePath: string;
+  outputDir: string;
+}
+
+export interface AwsConfig extends CommonConfig {
+  mode: 'aws';
+  /** Presigned GET, short-lived, for one object. Never a GitHub URL (ADR-0004). */
+  sourceUrl: string;
+  artifactBucket: string;
+  /** Server-generated. Never influenced by the repository being built. */
+  artifactPrefix: string;
+  /** Where progress is reported. The container has no DynamoDB access (ADR-0009). */
+  statusUrl: string;
+  statusToken: string;
+}
+
+export type BuilderConfig = LocalConfig | AwsConfig;
 
 const MB = 1024 * 1024;
 
@@ -62,29 +84,12 @@ export function loadConfig(
   overrides: ConfigOverrides = {},
 ): BuilderConfig {
   const mode = (env['BUILDER_MODE'] ?? 'local').trim();
-  if (mode !== 'local') {
-    // --- SEAM: `aws` mode lands here in M4 (presigned URL, S3 target, status API). ---
-    throw new BuildError('CONFIG_ERROR', `unsupported BUILDER_MODE "${mode}"; only "local" exists in M1`);
+  if (mode !== 'local' && mode !== 'aws') {
+    throw new BuildError('CONFIG_ERROR', `BUILDER_MODE must be "local" or "aws", got "${mode}"`);
   }
 
-  const sourcePath = overrides.sourcePath ?? str(env, 'SOURCE_PATH');
-  if (!sourcePath) {
-    throw new BuildError(
-      'CONFIG_ERROR',
-      'no source tarball given. Pass a path as an argument, or set SOURCE_PATH.',
-    );
-  }
-
-  const outputDir = overrides.outputDir ?? str(env, 'OUTPUT_DIR');
-  if (!outputDir) {
-    throw new BuildError('CONFIG_ERROR', 'OUTPUT_DIR is required in local mode.');
-  }
-
-  return {
-    mode: 'local',
+  const common: CommonConfig = {
     deploymentId: str(env, 'DEPLOYMENT_ID') ?? generateDeploymentId(),
-    sourcePath,
-    outputDir,
     workDir: str(env, 'WORK_DIR') ?? '/workspace',
     buildTimeoutSec: int(env, 'BUILD_TIMEOUT_SEC', DEFAULTS.buildTimeoutSec, 1, 3600),
     maxArchiveBytes: int(env, 'MAX_ARCHIVE_BYTES', DEFAULTS.maxArchiveBytes, 1024, 5_000 * MB),
@@ -96,6 +101,48 @@ export function loadConfig(
     logLevel: level(env, 'LOG_LEVEL'),
     secrets: [],
   };
+
+  if (mode === 'local') {
+    const sourcePath = overrides.sourcePath ?? str(env, 'SOURCE_PATH');
+    if (!sourcePath) {
+      throw new BuildError(
+        'CONFIG_ERROR',
+        'no source tarball given. Pass a path as an argument, or set SOURCE_PATH.',
+      );
+    }
+
+    const outputDir = overrides.outputDir ?? str(env, 'OUTPUT_DIR');
+    if (!outputDir) throw new BuildError('CONFIG_ERROR', 'OUTPUT_DIR is required in local mode.');
+
+    return { ...common, mode: 'local', sourcePath, outputDir };
+  }
+
+  const sourceUrl = require_(env, 'SOURCE_URL');
+  const statusToken = require_(env, 'STATUS_TOKEN');
+  const artifactPrefix = require_(env, 'ARTIFACT_PREFIX');
+
+  if (!/^https:\/\//i.test(sourceUrl)) {
+    throw new BuildError('CONFIG_ERROR', 'SOURCE_URL must be an https URL');
+  }
+  // The prefix becomes an S3 key and an IAM resource pattern. It is generated by
+  // the control plane, but assert its shape anyway: a leading slash or a "@..@"
+  // segment here would be a serious bug elsewhere, and this is where it shows.
+  if (artifactPrefix.startsWith('/') || artifactPrefix.includes('..')) {
+    throw new BuildError('CONFIG_ERROR', 'ARTIFACT_PREFIX must be a relative path without ".."');
+  }
+
+  return {
+    ...common,
+    mode: 'aws',
+    sourceUrl,
+    artifactBucket: require_(env, 'ARTIFACT_BUCKET'),
+    artifactPrefix: artifactPrefix.replace(/\/+$/, ''),
+    statusUrl: require_(env, 'STATUS_URL'),
+    statusToken,
+    // Both are credentials in their own right: the token authorises status
+    // writes, the URL grants read access to the source archive.
+    secrets: [statusToken, sourceUrl],
+  };
 }
 
 function str(env: NodeJS.ProcessEnv, key: string): string | undefined {
@@ -103,6 +150,12 @@ function str(env: NodeJS.ProcessEnv, key: string): string | undefined {
   if (raw === undefined) return undefined;
   const trimmed = raw.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function require_(env: NodeJS.ProcessEnv, key: string): string {
+  const value = str(env, key);
+  if (!value) throw new BuildError('CONFIG_ERROR', `${key} is required in aws mode`);
+  return value;
 }
 
 function int(
@@ -125,7 +178,7 @@ function int(
   return parsed;
 }
 
-function level(env: NodeJS.ProcessEnv, key: string): BuilderConfig['logLevel'] {
+function level(env: NodeJS.ProcessEnv, key: string): CommonConfig['logLevel'] {
   const raw = (str(env, key) ?? 'info').toLowerCase();
   if (raw === 'debug' || raw === 'info' || raw === 'warn' || raw === 'error') return raw;
   throw new BuildError('CONFIG_ERROR', `${key} must be debug|info|warn|error, got "${raw}"`);
@@ -133,13 +186,15 @@ function level(env: NodeJS.ProcessEnv, key: string): BuilderConfig['logLevel'] {
 
 /** Config as loggable fields. Never includes anything from `secrets`. */
 export function describeConfig(c: BuilderConfig): Record<string, unknown> {
-  return {
+  const common = {
     mode: c.mode,
-    sourcePath: c.sourcePath,
-    outputDir: c.outputDir,
     workDir: c.workDir,
     buildTimeoutSec: c.buildTimeoutSec,
     maxArtifactBytes: c.maxArtifactBytes,
     maxArtifactFiles: c.maxArtifactFiles,
   };
+
+  return c.mode === 'local'
+    ? { ...common, sourcePath: c.sourcePath, outputDir: c.outputDir }
+    : { ...common, artifactBucket: c.artifactBucket, artifactPrefix: c.artifactPrefix };
 }

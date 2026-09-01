@@ -2,18 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { isSafeEntryPath, extractSource } from '../../apps/builder/src/phases/extract.js';
-import { loadConfig, Logger, isBuildError, type BuilderConfig } from '@platform/core';
+import { loadConfig, Logger, isBuildError, type LocalConfig } from '@platform/core';
 import { fixture, withTempDir } from '../helpers.js';
 
 function silentLogger(): Logger {
   return new Logger({ deploymentId: 'test', write: () => {} });
 }
 
-function config(workDir: string, overrides: Partial<BuilderConfig> = {}): BuilderConfig {
+function config(workDir: string, overrides: Partial<LocalConfig> = {}): LocalConfig {
   const base = loadConfig(
     { BUILDER_MODE: 'local', OUTPUT_DIR: path.join(workDir, 'out') },
     { sourcePath: 'unused' },
   );
+  if (base.mode !== 'local') throw new Error('expected a local config');
   return { ...base, workDir, ...overrides };
 }
 

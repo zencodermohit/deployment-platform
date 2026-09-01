@@ -13,9 +13,11 @@ export {
   loadConfig,
   describeConfig,
   DEFAULTS,
+  type AwsConfig,
   type BuilderConfig,
   type BuilderMode,
   type ConfigOverrides,
+  type LocalConfig,
 } from './config.js';
 
 export {
