@@ -164,7 +164,13 @@ resource "aws_lambda_function" "api" {
       BUILD_TIMEOUT_SEC = tostring(var.build_timeout_sec)
       QUEUE_URL         = local.queue_url
       KVS_ARN           = local.kvs_arn
-      NODE_OPTIONS      = "--enable-source-maps=false"
+
+      AUTH_ENABLED            = tostring(var.auth_enabled)
+      SSM_PREFIX              = "/${var.project}"
+      API_PUBLIC_URL          = var.api_enabled ? aws_apigatewayv2_api.main[0].api_endpoint : ""
+      DASHBOARD_URL           = var.dashboard_url
+      MAX_DEPLOYMENTS_PER_DAY = tostring(var.max_deployments_per_day)
+      NODE_OPTIONS            = "--enable-source-maps=false"
     }
   }
 

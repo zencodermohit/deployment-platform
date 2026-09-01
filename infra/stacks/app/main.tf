@@ -123,6 +123,15 @@ resource "aws_dynamodb_table" "platform" {
     enabled = true
   }
 
+  # Expires sessions and daily quota counters. Without this they accumulate
+  # forever — the main table originally had no TTL at all, which the auth work
+  # surfaced. Deletion is free and best-effort, which is why session expiry is
+  # also checked in code.
+  ttl {
+    attribute_name = "ttlEpoch"
+    enabled        = true
+  }
+
   deletion_protection_enabled = var.deletion_protection
 
   lifecycle {
@@ -189,9 +198,27 @@ resource "aws_dynamodb_table" "test" {
     ]
   }
 
-  # Test rows clean themselves up, so a failed run leaves no residue.
-  ttl {
-    attribute_name = "expiresAt"
-    enabled        = true
-  }
+  # TTL is deliberately NOT managed here.
+  #
+  # It was set to `expiresAt` before the attribute was standardised on
+  # `ttlEpoch`, and DynamoDB both refuses to rename an active TTL attribute and
+  # rate-limits TTL changes to roughly one per hour. Rather than let a cosmetic
+  # setting block every apply, this table simply has no TTL: the integration
+  # tests delete their own rows, so nothing accumulates.
+  #
+  # The MAIN table has TTL on `ttlEpoch`, which is the one that matters —
+  # sessions and quota counters expire there.
+}
+
+# A queue with no consumer, for the handler tests.
+#
+# `POST /deployments` enqueues after writing the record, so the tests need
+# somewhere to send that message. Pointing them at the real queue would start
+# real Fargate builds every test run; leaving QUEUE_URL unset made the handler
+# throw a 500, which is how this went unnoticed after M4.
+resource "aws_sqs_queue" "test_builds" {
+  count = var.create_test_table ? 1 : 0
+
+  name                      = "${var.project}-test-builds"
+  message_retention_seconds = 300
 }

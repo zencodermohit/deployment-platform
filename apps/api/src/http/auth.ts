@@ -1,15 +1,13 @@
 /**
  * Caller identity and the authorization rule.
  *
- * M3 has no real login yet — that arrives in M6. What matters is that the
- * *authorization* logic is real from the start: retrofitting ownership checks
- * onto handlers that assumed a single user is exactly how holes get left
- * behind. So identity is stubbed; the ownership check is not.
- *
- * When sessions land, only `identify()` changes.
+ * Authentication is a session token; authorization is an ownership check. They
+ * were built in that order deliberately — the ownership check has been real
+ * since M3, when identity was still stubbed, because retrofitting it onto
+ * handlers that assumed a single user is how holes get left behind.
  */
 
-import { getProjectForUser } from '@platform/data';
+import { getProjectForUser, getSession } from '@platform/data';
 import { notFound, unauthenticated } from './errors.js';
 import type { HttpRequest } from './response.js';
 import type { Project } from '@platform/core';
@@ -18,18 +16,38 @@ export interface Caller {
   userId: string;
 }
 
+export function bearerToken(req: HttpRequest): string | null {
+  const header = req.headers['authorization'];
+  if (!header) return null;
+  const match = /^Bearer\s+(\S+)$/i.exec(header);
+  return match?.[1] ?? null;
+}
+
 /**
- * Resolve the caller.
+ * Resolve the caller, or refuse.
  *
- * Fails CLOSED: with no dev user configured there is no caller, so a
- * misconfigured deployment returns 401 rather than silently treating everyone
- * as the same person.
+ * Fails CLOSED at every branch: no token, an unknown token, an expired token
+ * and a misconfigured service all produce 401 rather than a default identity.
  *
- * `X-Debug-User` is honoured only when ALLOW_DEBUG_AUTH is explicitly "true",
- * and exists so multi-user authorization can be exercised with curl before real
- * sessions exist. It must be off everywhere that matters.
+ * The DEV_USER_ID path is a development convenience and is only honoured when
+ * AUTH_ENABLED is not "true". Once real auth is on, it is inert — so turning
+ * authentication on cannot leave a bypass behind.
  */
-export function identify(req: HttpRequest): Caller {
+export async function identify(req: HttpRequest): Promise<Caller> {
+  const authEnabled = process.env['AUTH_ENABLED'] === 'true';
+
+  if (authEnabled) {
+    const token = bearerToken(req);
+    if (!token) throw unauthenticated('a session token is required');
+
+    const session = await getSession(token);
+    if (!session) throw unauthenticated('this session is invalid or has expired');
+
+    return { userId: session.userId };
+  }
+
+  // --- development only, unreachable once AUTH_ENABLED is true ---
+
   if (process.env['ALLOW_DEBUG_AUTH'] === 'true') {
     const override = req.headers['x-debug-user'];
     if (override && /^usr_[0-9a-z_-]{1,64}$/i.test(override)) {
@@ -40,16 +58,16 @@ export function identify(req: HttpRequest): Caller {
   const devUser = process.env['DEV_USER_ID'];
   if (devUser) return { userId: devUser };
 
-  throw unauthenticated('no caller identity; real sessions arrive in M6');
+  throw unauthenticated('authentication is not configured');
 }
 
 /**
  * Load a project the caller owns, or 404.
  *
- * Uses a strongly consistent read scoped to the caller's own partition, so a
- * project belonging to someone else is not merely rejected — it is never read
- * at all. And the failure is 404, not 403, so the response cannot be used to
- * discover which project ids exist. Threat T11.
+ * Reads strongly consistently from the caller's OWN partition, so a project
+ * belonging to someone else is not merely rejected — it is never read at all.
+ * And the failure is 404, not 403, so the response cannot be used to discover
+ * which project ids exist. Threat T11.
  */
 export async function authorizeProject(caller: Caller, projectId: string): Promise<Project> {
   const project = await getProjectForUser(caller.userId, projectId);

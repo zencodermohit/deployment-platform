@@ -5,13 +5,19 @@ import {
   type Deployment,
 } from '@platform/core';
 import { authorizeProject, identify } from '../http/auth.js';
-import { notFound } from '../http/errors.js';
+import { notFound, quotaExceeded } from '../http/errors.js';
 import { json, parseBody, type HttpRequest, type HttpResponse } from '../http/response.js';
-import { createDeployment, getDeploymentById, listDeployments } from '@platform/data';
+import {
+  consumeDailyQuota,
+  createDeployment,
+  getDeploymentById,
+  listDeployments,
+} from '@platform/data';
 import { enqueueDeployment } from '../queue.js';
 import { createDeploymentSchema, listQuerySchema } from '../validation/schemas.js';
 
 const BUILD_TIMEOUT_SEC = Number(process.env['BUILD_TIMEOUT_SEC'] ?? 600);
+const MAX_DEPLOYMENTS_PER_DAY = Number(process.env['MAX_DEPLOYMENTS_PER_DAY'] ?? 50);
 
 function deploymentUrl(deployment: Deployment): string | null {
   const domain = process.env['DEPLOYMENT_DOMAIN'];
@@ -47,12 +53,21 @@ function present(deployment: Deployment): Record<string, unknown> {
 }
 
 export async function handleCreateDeployment(req: HttpRequest): Promise<HttpResponse> {
-  const caller = identify(req);
+  const caller = await identify(req);
   const projectId = req.pathParameters['projectId'];
   if (!projectId) throw notFound('project');
 
   const project = await authorizeProject(caller, projectId);
   const body = parseBody(req, createDeploymentSchema);
+
+  // Consumed BEFORE the record is created, so a rejected request leaves nothing
+  // behind. Every deployment starts a Fargate task, so this is a spend bound
+  // rather than a product rule (threat T8).
+  if (!(await consumeDailyQuota(caller.userId, MAX_DEPLOYMENTS_PER_DAY))) {
+    throw quotaExceeded(
+      `a user may start at most ${MAX_DEPLOYMENTS_PER_DAY} deployments per day`,
+    );
+  }
 
   const deploymentId = generateDeploymentId();
   const domain = process.env['DEPLOYMENT_DOMAIN'] ?? '';
@@ -113,7 +128,7 @@ export async function handleCreateDeployment(req: HttpRequest): Promise<HttpResp
 }
 
 export async function handleGetDeployment(req: HttpRequest): Promise<HttpResponse> {
-  const caller = identify(req);
+  const caller = await identify(req);
   const deploymentId = req.pathParameters['deploymentId'];
   if (!deploymentId) throw notFound('deployment');
 
@@ -127,7 +142,7 @@ export async function handleGetDeployment(req: HttpRequest): Promise<HttpRespons
 }
 
 export async function handleListDeployments(req: HttpRequest): Promise<HttpResponse> {
-  const caller = identify(req);
+  const caller = await identify(req);
   const projectId = req.pathParameters['projectId'];
   if (!projectId) throw notFound('project');
 

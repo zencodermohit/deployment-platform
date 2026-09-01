@@ -89,3 +89,26 @@ variable "cors_allow_origins" {
   type        = list(string)
   default     = ["http://localhost:5173"]
 }
+
+variable "auth_enabled" {
+  description = <<-EOT
+    Require a real session token on every route. Turn on once the GitHub OAuth
+    credentials are in Parameter Store (see auth.tf). While false, the API falls
+    back to DEV_USER_ID and is effectively public — which since M4 means anyone
+    with the URL can start builds that cost money.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "dashboard_url" {
+  description = "Where to send the browser after login. Empty returns the session as JSON."
+  type        = string
+  default     = ""
+}
+
+variable "max_deployments_per_day" {
+  description = "Per-user daily build cap. A spend bound (threat T8), not a product rule."
+  type        = number
+  default     = 50
+}

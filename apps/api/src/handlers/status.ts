@@ -21,6 +21,7 @@ import {
 import { putRoute } from '../edge.js';
 import { ApiError, notFound, unauthenticated } from '../http/errors.js';
 import { json, parseBody, type HttpRequest, type HttpResponse } from '../http/response.js';
+import { bearerToken } from '../http/auth.js';
 import { statusCallbackSchema } from '../validation/schemas.js';
 
 export async function handleStatusCallback(req: HttpRequest): Promise<HttpResponse> {
@@ -103,13 +104,6 @@ async function publishRoute(deployment: Deployment): Promise<void> {
       }),
     );
   }
-}
-
-function bearerToken(req: HttpRequest): string | null {
-  const header = req.headers['authorization'];
-  if (!header) return null;
-  const match = /^Bearer\s+(\S+)$/i.exec(header);
-  return match?.[1] ?? null;
 }
 
 function assertToken(presented: string, deployment: Deployment): void {

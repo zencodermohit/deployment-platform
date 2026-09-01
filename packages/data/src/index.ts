@@ -38,3 +38,17 @@ export {
   countProjects,
   setActiveDeployment,
 } from './projects.js';
+
+export {
+  hashToken,
+  getUser,
+  getUserByGithubId,
+  putUser,
+  createSession,
+  getSession,
+  deleteSession,
+  consumeDailyQuota,
+  SESSION_TTL_SEC,
+  type Session,
+  type User,
+} from './identity.js';

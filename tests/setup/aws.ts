@@ -30,5 +30,18 @@ export default function setup(): void {
   }
 
   process.env['TABLE_NAME'] = out;
+
+  const queue = execFileSync(
+    'terraform',
+    ['-chdir=' + path.join(root, 'infra', 'stacks', 'app'), 'output', '-raw', 'test_queue_url'],
+    { encoding: 'utf8' },
+  ).trim();
+
+  if (!queue.includes('-test-builds')) {
+    throw new Error(`refusing to enqueue into "${queue}" — it must be the test queue`);
+  }
+  process.env['QUEUE_URL'] = queue;
+
   console.log(`integration tests using table: ${out}`);
+  console.log(`integration tests using queue: ${queue}`);
 }

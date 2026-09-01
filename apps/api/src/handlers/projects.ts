@@ -27,7 +27,7 @@ function present(project: Project): Record<string, unknown> {
 }
 
 export async function handleCreateProject(req: HttpRequest): Promise<HttpResponse> {
-  const caller = identify(req);
+  const caller = await identify(req);
   const body = parseBody(req, createProjectSchema);
 
   // Throws RepositoryUrlError, which the router maps to 400. Parsed here rather
@@ -58,13 +58,13 @@ export async function handleCreateProject(req: HttpRequest): Promise<HttpRespons
 }
 
 export async function handleListProjects(req: HttpRequest): Promise<HttpResponse> {
-  const caller = identify(req);
+  const caller = await identify(req);
   const projects = await listProjects(caller.userId);
   return json(200, { projects: projects.map(present) });
 }
 
 export async function handleGetProject(req: HttpRequest): Promise<HttpResponse> {
-  const caller = identify(req);
+  const caller = await identify(req);
   const projectId = req.pathParameters['projectId'];
   if (!projectId) throw notFound('project');
 

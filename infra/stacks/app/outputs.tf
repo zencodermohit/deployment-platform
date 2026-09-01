@@ -25,3 +25,8 @@ output "dev_user_id" {
   description = "The stand-in caller. Every request is this user until M6."
   value       = var.dev_user_id
 }
+
+output "test_queue_url" {
+  description = "Consumer-less queue for handler tests."
+  value       = var.create_test_table ? aws_sqs_queue.test_builds[0].url : null
+}

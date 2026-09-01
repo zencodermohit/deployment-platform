@@ -23,6 +23,12 @@ import {
   handleListDeployments,
 } from './handlers/deployments.js';
 import { handleStatusCallback } from './handlers/status.js';
+import {
+  handleLoginCallback,
+  handleLoginStart,
+  handleLogout,
+  handleMe,
+} from './handlers/auth.js';
 
 type Handler = (req: HttpRequest) => Promise<HttpResponse>;
 
@@ -35,6 +41,11 @@ interface Route {
 
 const ROUTES: Route[] = [
   { method: 'GET', template: '/health', handler: async () => json(200, { ok: true }) },
+
+  { method: 'GET', template: '/auth/github', handler: handleLoginStart },
+  { method: 'GET', template: '/auth/github/callback', handler: handleLoginCallback },
+  { method: 'POST', template: '/auth/logout', handler: handleLogout },
+  { method: 'GET', template: '/me', handler: handleMe },
 
   { method: 'POST', template: '/projects', handler: handleCreateProject },
   { method: 'GET', template: '/projects', handler: handleListProjects },
