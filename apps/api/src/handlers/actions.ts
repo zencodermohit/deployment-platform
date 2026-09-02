@@ -6,29 +6,13 @@
  * this project is built to demonstrate, and until now it was only a claim.
  */
 
-import {
-  artifactPrefix,
-  deploymentHostname,
-  generateDeploymentId,
-  isTerminal,
-  type Deployment,
-} from '@platform/core';
-import {
-  consumeDailyQuota,
-  createDeployment,
-  getDeploymentById,
-  setActiveDeployment,
-  transition,
-} from '@platform/data';
+import { isTerminal, type Deployment } from '@platform/core';
+import { getDeploymentById, setActiveDeployment, transition } from '@platform/data';
 import { putRoute } from '../edge.js';
+import { startDeployment } from '../deploy.js';
 import { authorizeProject, identify } from '../http/auth.js';
-import { badRequest, conflict, notFound, quotaExceeded } from '../http/errors.js';
-import { json, parseBody, type HttpRequest, type HttpResponse } from '../http/response.js';
-import { enqueueDeployment } from '../queue.js';
-import { createDeploymentSchema } from '../validation/schemas.js';
-
-const BUILD_TIMEOUT_SEC = Number(process.env['BUILD_TIMEOUT_SEC'] ?? 600);
-const MAX_DEPLOYMENTS_PER_DAY = Number(process.env['MAX_DEPLOYMENTS_PER_DAY'] ?? 50);
+import { conflict, notFound } from '../http/errors.js';
+import { json, type HttpRequest, type HttpResponse } from '../http/response.js';
 
 /**
  * The stable, project-level routing key.
@@ -107,48 +91,16 @@ export async function handleRetry(req: HttpRequest): Promise<HttpResponse> {
     throw conflict('that deployment is still running');
   }
 
-  if (!(await consumeDailyQuota(caller.userId, MAX_DEPLOYMENTS_PER_DAY))) {
-    throw quotaExceeded(`a user may start at most ${MAX_DEPLOYMENTS_PER_DAY} deployments per day`);
-  }
-
-  const deploymentId = generateDeploymentId();
-  const domain = process.env['DEPLOYMENT_DOMAIN'] ?? '';
-  const now = new Date().toISOString();
-
-  const deployment = await createDeployment({
-    buildTimeoutSec: BUILD_TIMEOUT_SEC,
-    deployment: {
-      deploymentId,
-      projectId: project.projectId,
-      userId: caller.userId,
-      status: 'QUEUED',
-      repositoryUrl: project.repositoryUrl,
-      owner: project.owner,
-      repo: project.repo,
-      // The same ref as the original — a retry means "try that again", not
-      // "build whatever is on the branch now".
-      branch: original.branch,
-      commitSha: original.commitSha,
-      commitMessage: original.commitMessage,
-      trigger: 'retry',
-      framework: null,
-      artifactPrefix: artifactPrefix(project.projectId, deploymentId),
-      hostname: domain ? deploymentHostname(deploymentId, domain) : '',
-      taskArn: null,
-      logStreamName: `builds/${deploymentId}`,
-      statusTokenHash: null,
-      createdAt: now,
-      startedAt: null,
-      finishedAt: null,
-      durationMs: null,
-      artifactBytes: null,
-      fileCount: null,
-      error: null,
-      retryOfDeploymentId: original.deploymentId,
-    },
+  // Same shared path as a manual deploy. The ref is the ORIGINAL's — a retry
+  // means "try that again", not "build whatever is on the branch now".
+  const deployment = await startDeployment(project, {
+    branch: original.branch,
+    commitSha: original.commitSha,
+    commitMessage: original.commitMessage,
+    trigger: 'retry',
+    retryOfDeploymentId: original.deploymentId,
   });
 
-  await enqueueDeployment(deployment.deploymentId);
   return json(202, { deploymentId: deployment.deploymentId, status: deployment.status });
 }
 
@@ -177,14 +129,6 @@ export async function handleCancel(req: HttpRequest): Promise<HttpResponse> {
   }
 
   return json(200, { deploymentId: deployment.deploymentId, status: 'CANCELLED' });
-}
-
-/** Trigger a deployment from a body that may name a branch. Used by retry's sibling route. */
-export function parseBranch(req: HttpRequest): string | undefined {
-  const body = parseBody(req, createDeploymentSchema);
-  if (body.branch === undefined) return undefined;
-  if (body.branch.length === 0) throw badRequest('branch must not be empty');
-  return body.branch;
 }
 
 export function projectUrl(projectId: string): string | null {

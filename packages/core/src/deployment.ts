@@ -164,6 +164,8 @@ export interface Project {
   defaultBranch: string;
   /** Newest successful deployment currently served for this project. */
   activeDeploymentId: string | null;
+  /** HMAC secret for the GitHub push webhook, or null if auto-deploy is off. */
+  webhookSecret: string | null;
   createdAt: string;
   updatedAt: string;
   schemaVersion: number;

@@ -26,7 +26,8 @@
     "build:api": "node apps/api/build.mjs",
     "build:workers": "node apps/workers/build.mjs",
     "build:web": "npm run build --workspace @platform/web",
-    "deploy:web": "bash scripts/deploy-web.sh"
+    "deploy:web": "bash scripts/deploy-web.sh",
+    "webhook:register": "bash scripts/register-webhook.sh"
   },
   "devDependencies": {
     "@aws-sdk/client-cloudfront": "^3.1124.0",

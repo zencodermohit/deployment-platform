@@ -109,6 +109,23 @@ export async function countProjects(userId: string): Promise<number> {
   return result.Count ?? 0;
 }
 
+/** Store (or rotate) the project's webhook secret. Never returned by any read. */
+export async function setWebhookSecret(
+  userId: string,
+  projectId: string,
+  secret: string,
+): Promise<void> {
+  await documentClient().send(
+    new UpdateCommand({
+      TableName: tableName(),
+      Key: projectKey(userId, projectId),
+      UpdateExpression: 'SET webhookSecret = :s, updatedAt = :now',
+      ConditionExpression: 'attribute_exists(PK)',
+      ExpressionAttributeValues: { ':s': secret, ':now': new Date().toISOString() },
+    }),
+  );
+}
+
 /** Records which deployment a project currently serves. Used by promote/rollback. */
 export async function setActiveDeployment(
   userId: string,

@@ -240,62 +240,40 @@ the subdomain scheme was kept single-level for exactly this reason.
 
 ---
 
-## Step 5 — Webhooks: auto-deploy on push
+## Step 5 — Webhooks: auto-deploy on push  (BUILT)
 
-This is the one piece of *new engineering* rather than configuration, and it
-genuinely needs the repo from Step 1 to exist, because it reacts to that repo's
-push events. I have not built it yet; here is the shape it takes, and I can
-implement it on your go.
+Implemented and verified live. A signed push to a project's default branch now
+creates a `webhook`-triggered deployment through the same pipeline as a manual
+one — the daily quota and concurrency cap apply unchanged.
 
-### What it involves
+### Turn it on for a project
 
-1. **A public endpoint** — `POST /webhooks/github` on the existing API. It is
-   unauthenticated in the session sense (GitHub has no session), so it is
-   verified a different way: every GitHub webhook carries an
-   `X-Hub-Signature-256` HMAC of the body, keyed by a shared secret. The handler
-   recomputes it and rejects any request whose signature does not match, in
-   constant time. Without that check the endpoint is a free "build anything"
-   button for the internet.
+With a GitHub token that has `admin:repo_hook` on the repo:
 
-2. **A secret**, generated once and stored in SSM alongside the OAuth
-   credentials, given to GitHub when the webhook is created.
-
-3. **Mapping push → project.** The payload names the repository and the branch.
-   The handler looks up the project(s) whose `repositoryUrl` matches and whose
-   `defaultBranch` equals the pushed branch, then creates a deployment for each —
-   the same path `POST /deployments` already uses, so the quota, the queue and
-   the whole pipeline apply unchanged. `trigger` is recorded as `webhook`, which
-   the deployment model already has a slot for.
-
-4. **Ignoring the noise.** Only `push` events, only to the default branch,
-   skipping branch deletions (`deleted: true`) — otherwise every tag and every
-   feature branch would start a build.
-
-### Why it's safe to add last
-
-The webhook is just another way to call the deployment pipeline that already
-exists and is already bounded — the daily quota and the concurrency cap apply to
-a webhook-triggered build exactly as to a manual one, so a push flood cannot
-outspend a click flood. It reuses the state machine, the dispatcher, the
-reconciler. There is no new trust boundary, only a new, signature-verified door
-into an existing one.
-
-**When you're ready:** say so, and I'll build the handler, its signature
-verification with a deliberately-hostile test suite, the SSM secret, and a short
-script that registers the webhook on the repo via the GitHub API.
-
----
-
-## Order-of-operations summary
-
-```
-1. push to GitHub            → repo exists, CI runs
-   └ apply cicd stack        → OIDC roles, CI goes fully green
-2. OAuth app + auth_enabled  → the platform is no longer open to the world
-3. confirm SNS email         → alarms can actually reach you
-4. custom domain (optional)  → pretty per-deployment URLs
-5. webhooks (new code)       → git push builds automatically
+```bash
+GITHUB_TOKEN=ghp_xxx ./scripts/register-webhook.sh <projectId> owner/repo
 ```
 
-Steps 1–3 are the ones that matter for leaving this running safely. 4 is polish.
-5 is the last feature.
+That enables the webhook on the platform (generating a per-project HMAC secret,
+stored on the project and never returned again) and registers it on the repo in
+one step. GitHub sends a ping immediately; the next push to the default branch
+builds.
+
+### Or by hand
+
+1. `POST /projects/{projectId}/webhook` → returns the URL and secret.
+2. In the repo: **Settings → Webhooks → Add webhook**, paste the URL, set
+   content type to `application/json`, paste the secret, choose "Just the push
+   event".
+
+### How it is secured
+
+Every delivery carries `X-Hub-Signature-256`, an HMAC of the raw body under the
+project's secret. The handler recomputes it and compares in constant time,
+rejecting anything that does not match with a 401 — a forged signature, a
+tampered body, or a valid signature replayed from another project all fail
+identically. The secret is per-project, so a leak compromises one project, not
+all. Verified live: a signed push to the default branch returned 202 and created
+a `webhook` deployment; a forged signature returned 401; a push to a
+non-default branch, a tag, and a deletion each built nothing.
+

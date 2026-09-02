@@ -1,23 +1,10 @@
-import {
-  artifactPrefix,
-  deploymentHostname,
-  generateDeploymentId,
-  type Deployment,
-} from '@platform/core';
+import { type Deployment } from '@platform/core';
 import { authorizeProject, identify } from '../http/auth.js';
-import { notFound, quotaExceeded } from '../http/errors.js';
+import { notFound } from '../http/errors.js';
 import { json, parseBody, type HttpRequest, type HttpResponse } from '../http/response.js';
-import {
-  consumeDailyQuota,
-  createDeployment,
-  getDeploymentById,
-  listDeployments,
-} from '@platform/data';
-import { enqueueDeployment } from '../queue.js';
+import { getDeploymentById, listDeployments } from '@platform/data';
+import { startDeployment } from '../deploy.js';
 import { createDeploymentSchema, listQuerySchema } from '../validation/schemas.js';
-
-const BUILD_TIMEOUT_SEC = Number(process.env['BUILD_TIMEOUT_SEC'] ?? 600);
-const MAX_DEPLOYMENTS_PER_DAY = Number(process.env['MAX_DEPLOYMENTS_PER_DAY'] ?? 50);
 
 function deploymentUrl(deployment: Deployment): string | null {
   const domain = process.env['DEPLOYMENT_DOMAIN'];
@@ -60,70 +47,16 @@ export async function handleCreateDeployment(req: HttpRequest): Promise<HttpResp
   const project = await authorizeProject(caller, projectId);
   const body = parseBody(req, createDeploymentSchema);
 
-  // Consumed BEFORE the record is created, so a rejected request leaves nothing
-  // behind. Every deployment starts a Fargate task, so this is a spend bound
-  // rather than a product rule (threat T8).
-  if (!(await consumeDailyQuota(caller.userId, MAX_DEPLOYMENTS_PER_DAY))) {
-    throw quotaExceeded(
-      `a user may start at most ${MAX_DEPLOYMENTS_PER_DAY} deployments per day`,
-    );
-  }
-
-  const deploymentId = generateDeploymentId();
-  const domain = process.env['DEPLOYMENT_DOMAIN'] ?? '';
-  const now = new Date().toISOString();
-
-  const deployment = await createDeployment({
-    buildTimeoutSec: BUILD_TIMEOUT_SEC,
-    deployment: {
-      deploymentId,
-      projectId: project.projectId,
-      userId: caller.userId,
-      status: 'QUEUED',
-
-      // Read from the project, never from the request. Accepting a repository
-      // URL here would let a caller point an existing project at any repo.
-      repositoryUrl: project.repositoryUrl,
-      owner: project.owner,
-      repo: project.repo,
-
-      branch: body.branch ?? project.defaultBranch,
-      // M4 resolves the branch head to an immutable SHA through the GitHub App
-      // before the build is dispatched. Until then it stays null unless given.
-      commitSha: body.commitSha ?? null,
-      commitMessage: null,
-      trigger: 'manual',
-
-      framework: null,
-      // Both derived on the server from ids alone (threats T4, T6).
-      artifactPrefix: artifactPrefix(project.projectId, deploymentId),
-      hostname: domain ? deploymentHostname(deploymentId, domain) : '',
-
-      taskArn: null,
-      logStreamName: `builds/${deploymentId}`,
-      statusTokenHash: null,
-
-      createdAt: now,
-      startedAt: null,
-      finishedAt: null,
-      durationMs: null,
-      artifactBytes: null,
-      fileCount: null,
-      error: null,
-      retryOfDeploymentId: null,
-    },
+  // One shared path for every trigger — see apps/api/src/deploy.ts. It consumes
+  // the daily quota, writes the QUEUED record, and enqueues.
+  const deployment = await startDeployment(project, {
+    branch: body.branch ?? project.defaultBranch,
+    commitSha: body.commitSha ?? null,
+    trigger: 'manual',
   });
 
-  // Enqueue AFTER the record exists. The message carries only an id, so a
-  // dispatcher that picks it up instantly still finds a row to claim. Doing it
-  // the other way round produces a message pointing at nothing.
-  //
-  // If this throws, the deployment stays QUEUED with nothing to process it —
-  // the sweeper fails it at its deadline rather than leaving it forever.
-  await enqueueDeployment(deployment.deploymentId);
-
-  // 202, not 201: the deployment record exists, but the work has not happened.
-  // The API must not wait for a build that takes minutes.
+  // 202, not 201: the record exists, but the work has not happened. The API must
+  // not wait for a build that takes minutes.
   return json(202, present(deployment));
 }
 

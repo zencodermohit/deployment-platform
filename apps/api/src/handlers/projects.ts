@@ -52,6 +52,7 @@ export async function handleCreateProject(req: HttpRequest): Promise<HttpRespons
     repo: repository.repo,
     defaultBranch: body.defaultBranch,
     activeDeploymentId: null,
+    webhookSecret: null,
     createdAt: now,
     updatedAt: now,
   });

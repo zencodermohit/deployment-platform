@@ -37,6 +37,7 @@ export {
   listProjects,
   countProjects,
   setActiveDeployment,
+  setWebhookSecret,
 } from './projects.js';
 
 export {

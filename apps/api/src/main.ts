@@ -24,6 +24,7 @@ import {
 } from './handlers/deployments.js';
 import { handleStatusCallback } from './handlers/status.js';
 import { handleCancel, handlePromote, handleRetry } from './handlers/actions.js';
+import { handleEnableWebhook, handleWebhook } from './handlers/webhook.js';
 import {
   handleLoginCallback,
   handleLoginStart,
@@ -53,6 +54,7 @@ const ROUTES: Route[] = [
   { method: 'GET', template: '/projects/{projectId}', handler: handleGetProject },
 
   { method: 'POST', template: '/projects/{projectId}/deployments', handler: handleCreateDeployment },
+  { method: 'POST', template: '/projects/{projectId}/webhook', handler: handleEnableWebhook },
   { method: 'GET', template: '/projects/{projectId}/deployments', handler: handleListDeployments },
 
   { method: 'GET', template: '/deployments/{deploymentId}', handler: handleGetDeployment },
@@ -67,6 +69,9 @@ const ROUTES: Route[] = [
     template: '/internal/deployments/{deploymentId}/status',
     handler: handleStatusCallback,
   },
+
+  // Called by GitHub. No session; verified by HMAC signature (auth/webhook.ts).
+  { method: 'POST', template: '/webhooks/github/{projectId}', handler: handleWebhook },
 ];
 
 /** Match a concrete path against a template, extracting parameters. */
