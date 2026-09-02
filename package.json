@@ -10,7 +10,7 @@
     "apps/*"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -24,7 +24,9 @@
     "test:aws": "vitest run --config vitest.aws.config.ts",
     "docker:run": "bash scripts/run-build.sh",
     "build:api": "node apps/api/build.mjs",
-    "build:workers": "node apps/workers/build.mjs"
+    "build:workers": "node apps/workers/build.mjs",
+    "build:web": "npm run build --workspace @platform/web",
+    "deploy:web": "bash scripts/deploy-web.sh"
   },
   "devDependencies": {
     "@aws-sdk/client-cloudfront": "^3.1124.0",

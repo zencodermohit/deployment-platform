@@ -1,0 +1,252 @@
+/*
+ * A build console, not a marketing page.
+ *
+ * The palette follows the thing being looked at: a deployment is either
+ * running, finished, or broken, so amber / green / red carry meaning and
+ * everything else stays out of the way. Monospace for anything a machine
+ * produced — ids, commits, durations, logs — and a sans face for prose, so you
+ * can tell at a glance which is which.
+ */
+
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface-2: #1c2129;
+  --rule: #262c36;
+  --rule-strong: #363d49;
+
+  --text: #e6edf3;
+  --text-2: #9aa4b2;
+  --text-3: #6b7482;
+
+  --accent: #4fc4ae;
+  --accent-dim: #12302b;
+
+  --running: #d9a441;
+  --running-dim: #2e2513;
+  --ok: #46a758;
+  --ok-dim: #13291a;
+  --bad: #e5534b;
+  --bad-dim: #2d1513;
+
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-underline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- shell ---------- */
+
+.shell { max-width: 1040px; margin: 0 auto; padding: 0 24px 96px; }
+
+header.top {
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px 0; margin-bottom: 32px;
+  border-bottom: 1px solid var(--rule);
+}
+header.top h1 {
+  font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -0.01em;
+}
+header.top .spacer { flex: 1; }
+header.top .who {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 12px; color: var(--text-2);
+}
+header.top img { width: 22px; height: 22px; border-radius: 50%; }
+
+.crumbs {
+  font-family: var(--mono); font-size: 12px; color: var(--text-3);
+  margin-bottom: 20px;
+}
+.crumbs a { color: var(--text-2); text-decoration: none; }
+.crumbs a:hover { color: var(--accent); }
+
+h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 4px; }
+.sub { color: var(--text-2); font-size: 14px; margin: 0 0 24px; }
+
+/* ---------- buttons ---------- */
+
+button {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 5px;
+  border: 1px solid var(--rule-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+button.primary {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 500;
+}
+button.primary:hover:not(:disabled) { background: var(--accent); color: var(--bg); }
+
+/* ---------- cards ---------- */
+
+.grid { display: grid; gap: 12px; }
+
+.card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 16px 18px;
+  text-decoration: none;
+  color: inherit;
+}
+a.card:hover { border-color: var(--rule-strong); background: var(--surface-2); }
+
+.card .row { display: flex; align-items: center; gap: 12px; }
+.card .name { font-weight: 600; font-size: 15px; }
+.card .repo {
+  font-family: var(--mono); font-size: 12px; color: var(--text-2);
+  margin-top: 2px;
+}
+.card .spacer { flex: 1; }
+
+/* ---------- status ---------- */
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+  padding: 3px 9px; border-radius: 999px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill.running { color: var(--running); background: var(--running-dim); }
+.pill.ok      { color: var(--ok);      background: var(--ok-dim); }
+.pill.bad     { color: var(--bad);     background: var(--bad-dim); }
+.pill.idle    { color: var(--text-3);  background: var(--surface-2); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .pill.running .dot { animation: pulse 1.4s ease-in-out infinite; }
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+/* ---------- deployment list ---------- */
+
+table.deployments { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.deployments th {
+  text-align: left; font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-3);
+  font-weight: 500; padding: 8px 12px; border-bottom: 1px solid var(--rule);
+}
+table.deployments td {
+  padding: 11px 12px; border-bottom: 1px solid var(--rule);
+  color: var(--text-2); vertical-align: middle;
+}
+table.deployments tr:hover td { background: var(--surface); }
+table.deployments a { color: var(--text); text-decoration: none; }
+table.deployments a:hover { color: var(--accent); }
+.mono { font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+/* ---------- timeline ---------- */
+
+.timeline { display: grid; gap: 0; margin: 8px 0 24px; }
+.step {
+  display: grid; grid-template-columns: 20px 1fr auto; gap: 12px;
+  align-items: center; padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.step:last-child { border-bottom: 0; }
+.step .mark {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1px solid var(--rule-strong);
+  display: grid; place-items: center;
+  font-size: 10px; color: var(--text-3);
+}
+.step.done .mark { border-color: var(--ok); color: var(--ok); }
+.step.active .mark { border-color: var(--running); color: var(--running); }
+.step.failed .mark { border-color: var(--bad); color: var(--bad); }
+.step .label { font-family: var(--mono); font-size: 12.5px; }
+.step.pending .label { color: var(--text-3); }
+.step .at { font-family: var(--mono); font-size: 11.5px; color: var(--text-3); }
+
+/* ---------- detail ---------- */
+
+dl.facts {
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 20px;
+  font-size: 13.5px; margin: 0 0 24px;
+}
+dl.facts dt { font-family: var(--mono); font-size: 11.5px; color: var(--text-3); }
+dl.facts dd { margin: 0; color: var(--text-2); }
+dl.facts dd.mono { color: var(--text); }
+
+.error-box {
+  border: 1px solid var(--bad); background: var(--bad-dim);
+  border-radius: 8px; padding: 14px 16px; margin-bottom: 24px;
+}
+.error-box .code {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  color: var(--bad); display: block; margin-bottom: 6px;
+}
+.error-box p { margin: 0; font-size: 14px; }
+
+/* ---------- forms ---------- */
+
+form.new-project {
+  display: grid; gap: 10px;
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 8px; padding: 18px; margin-bottom: 28px;
+}
+form.new-project .fields { display: grid; grid-template-columns: 1fr 2fr auto; gap: 10px; }
+input {
+  font: inherit; font-size: 13.5px;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--rule-strong); border-radius: 5px;
+  padding: 7px 10px;
+}
+input::placeholder { color: var(--text-3); }
+
+/* ---------- states ---------- */
+
+.empty, .loading {
+  text-align: center; padding: 56px 24px; color: var(--text-3);
+  border: 1px dashed var(--rule-strong); border-radius: 8px;
+}
+.banner {
+  border: 1px solid var(--bad); background: var(--bad-dim);
+  color: var(--text); border-radius: 6px;
+  padding: 10px 14px; margin-bottom: 20px; font-size: 13.5px;
+}
+
+/* ---------- login ---------- */
+
+.login {
+  min-height: 70vh; display: grid; place-items: center; text-align: center;
+}
+.login .inner { max-width: 380px; }
+.login h2 { margin-bottom: 8px; }
+.login p { color: var(--text-2); font-size: 14px; margin-bottom: 24px; }
+.login .note {
+  margin-top: 28px; font-size: 12.5px; color: var(--text-3);
+  border-top: 1px solid var(--rule); padding-top: 16px; text-align: left;
+}
+
+@media (max-width: 720px) {
+  form.new-project .fields { grid-template-columns: 1fr; }
+  table.deployments .hide-sm { display: none; }
+}

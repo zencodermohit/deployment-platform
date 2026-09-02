@@ -85,9 +85,16 @@ variable "api_burst_limit" {
 }
 
 variable "cors_allow_origins" {
-  description = "Origins permitted to call the API from a browser."
+  description = <<-EOT
+    Origins permitted to call the API from a browser. An allowlist, not "*":
+    the API is credentialed, and a wildcard would let any page on the internet
+    make authenticated requests with a user's session.
+  EOT
   type        = list(string)
-  default     = ["http://localhost:5173"]
+  default = [
+    "http://localhost:5173",
+    "https://d3895jyfnxjrwh.cloudfront.net",
+  ]
 }
 
 variable "auth_enabled" {

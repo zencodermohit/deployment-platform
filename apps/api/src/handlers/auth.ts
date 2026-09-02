@@ -99,7 +99,27 @@ export async function handleLoginCallback(req: HttpRequest): Promise<HttpRespons
 export async function handleMe(req: HttpRequest): Promise<HttpResponse> {
   const caller = await identify(req);
   const user = await getUser(caller.userId);
-  if (!user) throw notFound('user');
+
+  if (!user) {
+    // With authentication off, identify() resolves to DEV_USER_ID, for which no
+    // user record exists — nobody has ever logged in. Returning a stand-in lets
+    // the dashboard be used before the OAuth app exists.
+    //
+    // Strictly gated: once AUTH_ENABLED is true, identify() has already required
+    // a real session, so reaching here means a session pointing at a deleted
+    // user, which genuinely is a 404.
+    if (process.env['AUTH_ENABLED'] !== 'true') {
+      return json(200, {
+        userId: caller.userId,
+        login: 'dev',
+        email: null,
+        avatarUrl: null,
+        createdAt: null,
+        authDisabled: true,
+      });
+    }
+    throw notFound('user');
+  }
 
   return json(200, {
     userId: user.userId,
