@@ -25,6 +25,7 @@ import {
   transition,
 } from '@platform/data';
 import { putRoute } from '../edge.js';
+import { projectRouteKey } from './actions.js';
 import { ApiError, notFound, unauthenticated } from '../http/errors.js';
 import { json, parseBody, type HttpRequest, type HttpResponse } from '../http/response.js';
 import { bearerToken } from '../http/auth.js';
@@ -117,6 +118,14 @@ async function publishRoute(deployment: Deployment): Promise<void> {
       // Path mode keys on the deployment id; with a custom domain the hostname
       // is the key. Both are written so either URL works.
       key: deployment.deploymentId,
+      prefix: deployment.artifactPrefix,
+    });
+
+    // The project's stable URL follows the newest successful build, the way a
+    // push to production does. Promoting an older deployment points this key
+    // somewhere else without touching a single artifact.
+    await putRoute({
+      key: projectRouteKey(deployment.projectId),
       prefix: deployment.artifactPrefix,
     });
 

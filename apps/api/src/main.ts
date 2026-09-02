@@ -23,6 +23,7 @@ import {
   handleListDeployments,
 } from './handlers/deployments.js';
 import { handleStatusCallback } from './handlers/status.js';
+import { handleCancel, handlePromote, handleRetry } from './handlers/actions.js';
 import {
   handleLoginCallback,
   handleLoginStart,
@@ -55,6 +56,9 @@ const ROUTES: Route[] = [
   { method: 'GET', template: '/projects/{projectId}/deployments', handler: handleListDeployments },
 
   { method: 'GET', template: '/deployments/{deploymentId}', handler: handleGetDeployment },
+  { method: 'POST', template: '/deployments/{deploymentId}/promote', handler: handlePromote },
+  { method: 'POST', template: '/deployments/{deploymentId}/retry', handler: handleRetry },
+  { method: 'POST', template: '/deployments/{deploymentId}/cancel', handler: handleCancel },
 
   // Called by the build container, authenticated with a per-deployment token
   // rather than a session. Not part of the public surface.

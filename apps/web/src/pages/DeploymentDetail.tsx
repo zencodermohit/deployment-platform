@@ -5,6 +5,24 @@ import { bytes, duration, StatusPill, Timeline } from '../components';
 export function DeploymentDetail({ deploymentId }: { deploymentId: string }): JSX.Element {
   const [deployment, setDeployment] = useState<Deployment | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const act = (
+    run: () => Promise<unknown>,
+    after: (result: unknown) => string,
+  ): void => {
+    setBusy(true);
+    setError(null);
+    setNote(null);
+    run()
+      .then((result) => {
+        setNote(after(result));
+        load();
+      })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setBusy(false));
+  };
 
   const load = useCallback(() => {
     api
@@ -53,13 +71,65 @@ export function DeploymentDetail({ deploymentId }: { deploymentId: string }): JS
         </div>
       )}
 
-      {deployment.status === 'DEPLOYED' && deployment.url && (
-        <p style={{ marginBottom: 24 }}>
+      {note && (
+        <p className="sub mono" style={{ color: 'var(--ok)' }}>
+          {note}
+        </p>
+      )}
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
+        {deployment.status === 'DEPLOYED' && deployment.url && (
           <a href={deployment.url} target="_blank" rel="noreferrer">
             <button className="primary">Open site ↗</button>
           </a>
-        </p>
-      )}
+        )}
+
+        {deployment.status === 'DEPLOYED' && (
+          <button
+            disabled={busy}
+            onClick={() =>
+              act(
+                () => api.promote(deployment.deploymentId),
+                (r) => {
+                  const { tookMs } = r as { tookMs: number };
+                  // Worth showing the number: it is the difference between a
+                  // pointer swap and a rebuild.
+                  return `now serving this deployment — ${tookMs}ms, no rebuild`;
+                },
+              )
+            }
+          >
+            Promote to live
+          </button>
+        )}
+
+        {isTerminal(deployment.status) && (
+          <button
+            disabled={busy}
+            onClick={() =>
+              act(
+                () => api.retry(deployment.deploymentId),
+                (r) => {
+                  const { deploymentId } = r as { deploymentId: string };
+                  window.location.hash = `/deployments/${deploymentId}`;
+                  return 'started a new deployment';
+                },
+              )
+            }
+          >
+            Retry
+          </button>
+        )}
+
+        {(deployment.status === 'QUEUED' || deployment.status === 'PROVISIONING') && (
+          <button
+            disabled={busy}
+            onClick={() => act(() => api.cancel(deployment.deploymentId), () => 'cancelled')}
+          >
+            Cancel
+          </button>
+        )}
+      </div>
 
       <dl className="facts">
         <dt>branch</dt>

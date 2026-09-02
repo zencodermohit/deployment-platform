@@ -7,6 +7,7 @@ import { conflict, notFound, quotaExceeded } from '../http/errors.js';
 import { json, parseBody, type HttpRequest, type HttpResponse } from '../http/response.js';
 import { countProjects, createProject, listProjects } from '@platform/data';
 import { createProjectSchema, parseRepositoryUrl } from '../validation/schemas.js';
+import { projectUrl } from './actions.js';
 import { isConditionalCheckFailure } from '@platform/data';
 
 const MAX_PROJECTS_PER_USER = 10;
@@ -21,6 +22,7 @@ function present(project: Project): Record<string, unknown> {
     repo: project.repo,
     defaultBranch: project.defaultBranch,
     activeDeploymentId: project.activeDeploymentId,
+    url: project.activeDeploymentId ? projectUrl(project.projectId) : null,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
   };

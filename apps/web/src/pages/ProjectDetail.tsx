@@ -57,9 +57,16 @@ export function ProjectDetail({ projectId }: { projectId: string }): JSX.Element
             )}
           </p>
         </div>
-        <button className="primary" onClick={deploy} disabled={busy || !project}>
-          {busy ? 'Starting…' : 'Deploy'}
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {project?.url && (
+            <a href={project.url} target="_blank" rel="noreferrer">
+              <button>Live site ↗</button>
+            </a>
+          )}
+          <button className="primary" onClick={deploy} disabled={busy || !project}>
+            {busy ? 'Starting…' : 'Deploy'}
+          </button>
+        </div>
       </div>
 
       {error && <div className="banner">{error}</div>}

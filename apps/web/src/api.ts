@@ -20,6 +20,7 @@ export type DeploymentStatus =
 
 export interface Project {
   projectId: string;
+  url?: string | null;
   name: string;
   repositoryUrl: string;
   owner: string;
@@ -123,6 +124,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(branch ? { branch } : {}),
     }),
+
+  promote: (deploymentId: string) =>
+    request<{ promoted: string; url: string | null; tookMs: number; rebuilt: boolean }>(
+      `/deployments/${deploymentId}/promote`,
+      { method: 'POST' },
+    ),
+
+  retry: (deploymentId: string) =>
+    request<{ deploymentId: string }>(`/deployments/${deploymentId}/retry`, { method: 'POST' }),
+
+  cancel: (deploymentId: string) =>
+    request<{ status: string }>(`/deployments/${deploymentId}/cancel`, { method: 'POST' }),
 
   logout: () => request<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
 };
