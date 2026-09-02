@@ -120,6 +120,17 @@ data "aws_iam_policy_document" "api" {
     actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["${aws_cloudwatch_log_group.api.arn}:*"]
   }
+
+  # Read the build container's logs to serve GET /deployments/{id}/logs.
+  # Convention-derived ARN rather than a cross-stack read: the build stack
+  # already reads THIS stack's outputs, so reading its outputs back would be a
+  # dependency cycle. The log group name is deterministic.
+  statement {
+    sid       = "ReadBuildLogs"
+    effect    = "Allow"
+    actions   = ["logs:FilterLogEvents", "logs:GetLogEvents"]
+    resources = ["arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/ecs/${var.project}-builder:*"]
+  }
 }
 
 resource "aws_iam_role_policy" "api" {
@@ -170,6 +181,7 @@ resource "aws_lambda_function" "api" {
       API_PUBLIC_URL          = var.api_enabled ? aws_apigatewayv2_api.main[0].api_endpoint : ""
       DASHBOARD_URL           = var.dashboard_url
       MAX_DEPLOYMENTS_PER_DAY = tostring(var.max_deployments_per_day)
+      BUILD_LOG_GROUP         = "/aws/ecs/${var.project}-builder"
       NODE_OPTIONS            = "--enable-source-maps=false"
     }
   }

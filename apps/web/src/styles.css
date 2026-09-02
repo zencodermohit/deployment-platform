@@ -250,3 +250,33 @@ input::placeholder { color: var(--text-3); }
   form.new-project .fields { grid-template-columns: 1fr; }
   table.deployments .hide-sm { display: none; }
 }
+
+/* ---------- build log ---------- */
+
+.logs-heading {
+  font-size: 13px; font-weight: 600; margin: 8px 0 10px;
+  color: var(--text-2);
+}
+.logs {
+  background: #0a0e14;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 14px;
+  max-height: 420px;
+  overflow-y: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.empty-logs { color: var(--text-3); font-style: italic; }
+.logline { display: grid; grid-template-columns: 74px 84px 1fr; gap: 10px; }
+.logline .lt { color: var(--text-3); }
+.logline .lp { color: var(--accent); }
+.logline .lm { color: var(--text-2); white-space: pre-wrap; word-break: break-word; }
+.logline.warn .lm { color: var(--running); }
+.logline.error .lm { color: var(--bad); }
+
+@media (max-width: 720px) {
+  .logline { grid-template-columns: 60px 1fr; }
+  .logline .lp { display: none; }
+}

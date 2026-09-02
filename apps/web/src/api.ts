@@ -50,6 +50,13 @@ export interface Deployment {
   error: { code: string; message: string; exitCode?: number | null } | null;
 }
 
+export interface LogLine {
+  ts: string;
+  level: string;
+  phase: string;
+  msg: string;
+}
+
 export interface Me {
   userId: string;
   login: string;
@@ -118,6 +125,11 @@ export const api = {
     ),
 
   getDeployment: (deploymentId: string) => request<Deployment>(`/deployments/${deploymentId}`),
+
+  getLogs: (deploymentId: string, since?: number) =>
+    request<{ lines: LogLine[]; nextSince: number | null; complete: boolean }>(
+      `/deployments/${deploymentId}/logs${since ? `?since=${since}` : ''}`,
+    ),
 
   deploy: (projectId: string, branch?: string) =>
     request<Deployment>(`/projects/${projectId}/deployments`, {

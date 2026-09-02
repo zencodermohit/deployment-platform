@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, isTerminal, type Deployment } from '../api';
 import { bytes, duration, StatusPill, Timeline } from '../components';
+import { Logs } from './Logs';
 
 export function DeploymentDetail({ deploymentId }: { deploymentId: string }): JSX.Element {
   const [deployment, setDeployment] = useState<Deployment | null>(null);
@@ -162,6 +163,9 @@ export function DeploymentDetail({ deploymentId }: { deploymentId: string }): JS
           {deployment.finishedAt ? new Date(deployment.finishedAt).toLocaleString() : '—'}
         </dd>
       </dl>
+
+      <h3 className="logs-heading">Build log</h3>
+      <Logs deploymentId={deployment.deploymentId} status={deployment.status} />
 
       {!isTerminal(deployment.status) && (
         <p className="sub mono" style={{ color: 'var(--text-3)' }}>

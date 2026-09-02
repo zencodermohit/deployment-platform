@@ -25,6 +25,7 @@ import {
 import { handleStatusCallback } from './handlers/status.js';
 import { handleCancel, handlePromote, handleRetry } from './handlers/actions.js';
 import { handleEnableWebhook, handleWebhook } from './handlers/webhook.js';
+import { handleGetLogs } from './handlers/logs.js';
 import {
   handleLoginCallback,
   handleLoginStart,
@@ -58,6 +59,7 @@ const ROUTES: Route[] = [
   { method: 'GET', template: '/projects/{projectId}/deployments', handler: handleListDeployments },
 
   { method: 'GET', template: '/deployments/{deploymentId}', handler: handleGetDeployment },
+  { method: 'GET', template: '/deployments/{deploymentId}/logs', handler: handleGetLogs },
   { method: 'POST', template: '/deployments/{deploymentId}/promote', handler: handlePromote },
   { method: 'POST', template: '/deployments/{deploymentId}/retry', handler: handleRetry },
   { method: 'POST', template: '/deployments/{deploymentId}/cancel', handler: handleCancel },
